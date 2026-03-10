@@ -369,7 +369,7 @@ export default function Sidebets({ myPlayer, players, pars, ctpBets, onCtpOptTog
       <div style={{display:"flex",marginBottom:16,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}>
         <button className={"sb-tab"+(tab==="ctp"?" active":"")} onClick={()=>setTab("ctp")}>CTP</button>
         <button className={"sb-tab"+(tab==="live"?" active":"")} onClick={()=>setTab("live")}>LIVE BETS</button>
-        {myPlayer && <button className={"sb-tab"+(tab==="mine"?" active":"")} onClick={()=>setTab("mine")}>MY BETS</button>}
+        <button className={"sb-tab"+(tab==="mine"?" active":"")} onClick={()=>setTab("mine")}>MY BETS</button>
       </div>
 
       {tab==="ctp" && (
@@ -382,8 +382,15 @@ export default function Sidebets({ myPlayer, players, pars, ctpBets, onCtpOptTog
         </div>
       )}
 
-      {tab==="mine" && myPlayer && (
+      {tab==="mine" && (
         <div className="sb-fade">
+          {!myPlayer ? (
+            <div style={{textAlign:"center",padding:"48px 20px",color:"var(--text3)"}}>
+              <div style={{fontSize:36,marginBottom:10}}>🔒</div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,marginBottom:6,color:"var(--text)"}}>LOG IN TO VIEW YOUR BETS</div>
+              <div style={{fontSize:13,lineHeight:1.6}}>Go to <strong style={{color:"var(--gold)"}}>MY SCORES</strong> and select your name to access sidebets</div>
+            </div>
+          ) : (<>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>YOUR SIDEBETS</div>
             {!creating && <button className="btn-gold" style={{fontSize:12}} onClick={()=>setCreating(true)}>+ NEW BET</button>}
@@ -448,6 +455,7 @@ export default function Sidebets({ myPlayer, players, pars, ctpBets, onCtpOptTog
             const opponent   = players.find(p=>p.id===opponentId);
             return <BetCard key={bet.id} bet={bet} myPlayer={myPlayer} opponent={opponent} pars={pars} onDelete={()=>deleteBet(bet.id)}/>;
           })}
+          </>)}
         </div>
       )}
     </div>
