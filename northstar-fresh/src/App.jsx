@@ -719,7 +719,7 @@ export default function App() {
   // Auto-initialize CTP bets for all par 3s if not already active
   const initCtpBets = async () => {
     for (const holeIdx of par3Holes) {
-      const key = \`hole_\${holeIdx}\`;
+      const key = `hole_${holeIdx}`;
       if (!ctpBets[key]) {
         await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "ctp_bets", key), {
           holeIndex: holeIdx, active: true, entries: {}
