@@ -678,7 +678,7 @@ export default function App() {
   const [selectedPid, setSelectedPid] = useState(null);
   const [activePlayer, setActivePlayer] = useState(null);
   const [activeHole, setActiveHole]   = useState(0);
-  const [regForm, setRegForm]         = useState({ code:"", name:"", handicap:"", flight:"Scratch (0-5)", pin:"", pin2:"" });
+  const [regForm, setRegForm]         = useState({ code:"", name:"", email:"", handicap:"", flight:"Scratch (0-5)", pin:"", pin2:"" });
   const [regError, setRegError]       = useState("");
   const [regSuccess, setRegSuccess]   = useState(false);
   const [showScModal, setShowScModal] = useState(false);
@@ -846,7 +846,7 @@ export default function App() {
     if (regForm.pin !== regForm.pin2) { setRegError("PINs do not match."); return; }
     const id  = `player-${Date.now()}`;
     const pinHash = await hashPin(regForm.pin);
-    const np  = { id, name:regForm.name.trim(), handicap:parseInt(regForm.handicap)||0, flight:regForm.flight, scores:Array(18).fill(null), pinHash };
+    const np  = { id, name:regForm.name.trim(), email:regForm.email.trim().toLowerCase(), handicap:parseInt(regForm.handicap)||0, flight:regForm.flight, scores:Array(18).fill(null), pinHash };
     await savePlayer(np);
     setActivePlayer(np);
     setRegSuccess(true);
@@ -1110,6 +1110,11 @@ export default function App() {
                 <div className="section-label">FULL NAME</div>
                 <input defaultValue={regForm.name} onBlur={e=>setRegForm(f=>({...f,name:e.target.value}))} placeholder="First Last" style={{width:"100%"}}/>
               </div>
+              <div>
+                <div className="section-label">EMAIL ADDRESS</div>
+                <input type="email" defaultValue={regForm.email} onBlur={e=>setRegForm(f=>({...f,email:e.target.value}))} placeholder="you@email.com" style={{width:"100%"}}/>
+                <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>For tournament updates and announcements only.</div>
+              </div>
               <div style={{display:"flex",gap:12}}>
                 <div style={{flex:1}}>
                   <div className="section-label">HANDICAP INDEX</div>
@@ -1154,7 +1159,92 @@ export default function App() {
   );
 
   // ══════════════════════════════════════════════════════════════════════════
-  // MY SCORES LOGIN
+  // ══════════════════════════════════════════════════════════════════════════
+  // QUICK LOGIN — select player + PIN → goes straight to My Scores
+  const LoginView = () => {
+    const [loginPid, setLoginPid]   = React.useState("");
+    const [loginPin, setLoginPin]   = React.useState("");
+    const [loginErr, setLoginErr]   = React.useState("");
+    const [logging,  setLogging]    = React.useState(false);
+
+    const selectedPlayer = players.find(p=>p.id===loginPid);
+
+    const handleLogin = async () => {
+      if (!selectedPlayer) { setLoginErr("Select your name."); return; }
+      setLogging(true);
+      if (loginPin === ADMIN_PIN) {
+        setActivePlayer(selectedPlayer);
+        setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
+        setScreen("my-scores");
+        return;
+      }
+      const hash = await hashPin(loginPin);
+      if (hash === selectedPlayer.pinHash) {
+        setActivePlayer(selectedPlayer);
+        setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
+        setScreen("my-scores");
+      } else {
+        setLoginErr("Incorrect PIN. Try again or ask the commissioner.");
+        setLogging(false);
+        setLoginPin("");
+      }
+    };
+
+    return (
+      <div className="fade-up" style={{maxWidth:400,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--green)",marginBottom:8}}>NORTH STAR AMATEUR SERIES</div>
+          <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>PLAYER LOGIN</h2>
+          <p style={{fontSize:14,color:"var(--text2)",marginTop:8}}>Select your name and enter your PIN to access your scorecard.</p>
+        </div>
+        <div className="card" style={{padding:28}}>
+          <div style={{marginBottom:16}}>
+            <div className="section-label" style={{marginBottom:6}}>YOUR NAME</div>
+            <select value={loginPid} onChange={e=>{setLoginPid(e.target.value);setLoginErr("");setLoginPin("");}}
+              style={{width:"100%",padding:"10px 12px",fontSize:15,background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:loginPid?"var(--text)":"var(--text3)"}}>
+              <option value="">Select your name...</option>
+              {players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+
+          {loginPid && (
+            <>
+              <div style={{marginBottom:20}}>
+                <div className="section-label" style={{marginBottom:8}}>YOUR PIN</div>
+                <div style={{display:"flex",justifyContent:"center",gap:10,marginBottom:14}}>
+                  {[0,1,2,3].map(i=>(
+                    <div key={i} style={{width:48,height:56,border:"2px solid "+(loginPin.length>i?"var(--gold)":"var(--border2)"),borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,background:"var(--bg3)",color:"var(--gold)",transition:"all .15s"}}>
+                      {loginPin.length>i?"●":""}
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
+                  {[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map((k,i)=>(
+                    <button key={i} onClick={()=>{
+                      if(k==="⌫") setLoginPin(p=>p.slice(0,-1));
+                      else if(k===""||loginPin.length>=4) return;
+                      else { setLoginPin(p=>p+k); setLoginErr(""); }
+                    }} style={{padding:"15px 8px",fontFamily:"'DM Mono'",fontSize:20,background:k==="⌫"?"var(--bg3)":"var(--bg4)",border:"1px solid var(--border2)",borderRadius:6,color:k==="⌫"?"var(--red)":"var(--text)",cursor:k===""?"default":"pointer",opacity:k===""?0:1}}>
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {loginErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{loginErr}</div>}
+              <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}} onClick={handleLogin} disabled={logging||loginPin.length!==4}>
+                {logging?"...":"LOG IN & ENTER SCORES →"}
+              </button>
+            </>
+          )}
+        </div>
+        <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"var(--text3)"}}>
+          New player? <span style={{color:"var(--gold)",cursor:"pointer"}} onClick={()=>setScreen("register")}>Register here →</span>
+        </div>
+      </div>
+    );
+  };
+
+    // MY SCORES LOGIN
   const MyScoresLogin = () => {
     const handlePinSubmit = async () => {
       if (!pendingPlayer) return;
@@ -1475,10 +1565,10 @@ export default function App() {
   // ROOT RENDER
   const NAV_PRIMARY = [
     ["leaderboard","🏆 LEADERBOARD"],
-    ["my-scores-login","✏️ MY SCORES"],
     ["sidebets","🤝 SIDEBETS"],
     ["season","🌟 STANDINGS"],
     ["register","✍ REGISTER"],
+    ["login","🔑 LOGIN"],
   ];
   const NAV_MORE = [
     ["history","📖 HISTORY"],
@@ -1489,7 +1579,7 @@ export default function App() {
     ["admin","⚙ ADMIN"],
   ];
   const NAV = [...NAV_PRIMARY, ...NAV_MORE];
-  const activeNav = screen==="my-scores"?"my-scores-login":screen==="sidebets"?"sidebets":screen;
+  const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen;
 
   return (
     <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--text)"}}>
@@ -1527,13 +1617,15 @@ export default function App() {
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
               <button className="btn-ghost btn-sm" onClick={()=>{ setRegSuccess(false); setRegError(""); setScreen("register"); }}>JOIN / REGISTER</button>
-              <button className="btn-gold  btn-sm" onClick={()=>setScreen(activePlayer?"my-scores":"my-scores-login")}>✏️ MY SCORES</button>
+              <button className="btn-gold btn-sm" style={{display:"flex",alignItems:"center",gap:6}} onClick={()=>setScreen(activePlayer?"my-scores":"my-scores-login")}>
+                {activePlayer ? <><span style={{fontSize:10,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePlayer.name?.split(" ")[0]?.toUpperCase()}</span><span>✏️</span></> : <>✏️ LOG IN</>}
+              </button>
             </div>
           </div>
           <div style={{display:"flex",marginTop:12,alignItems:"center",gap:0}}>
             {NAV_PRIMARY.map(([val,label])=>(
               <div key={val} className={`nav-pill ${activeNav===val?"active":""}`}
-                onClick={()=>{ if(val==="my-scores-login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}>
+                onClick={()=>{ if(val==="login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}>
                 {label}
               </div>
             ))}
@@ -1571,6 +1663,7 @@ export default function App() {
         {screen==="scorecard"       && <ScorecardView/>}
         {screen==="course"          && <CourseView/>}
         {screen==="register"        && <RegisterView/>}
+        {(screen==="login"||screen==="my-scores-login") && <LoginView/>}
         {screen==="my-scores-login" && <MyScoresLogin/>}
         {screen==="my-scores"       && <MyScores/>}
         {screen==="history" && <TournamentHistory players={players} />}
