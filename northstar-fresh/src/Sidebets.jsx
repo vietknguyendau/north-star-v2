@@ -178,7 +178,7 @@ function BetCard({ bet, myPlayer, opponent, pars, onDelete }) {
   );
 }
 
-export default function Sidebets({ myPlayer, players, pars }) {
+export default function Sidebets({ myPlayer, players, pars, ctpBets, onCtpOptToggle }) {
   const [bets, setBets]         = useState([]);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving]     = useState(false);
@@ -222,10 +222,60 @@ export default function Sidebets({ myPlayer, players, pars }) {
   const eligible = players.filter(p => p.id !== myPlayer?.id);
 
   if (!myPlayer) return null;
+  const isOptedIn = myPlayer?.ctpOptIn !== false;
 
   return (
     <div className="sb-fade">
       <style>{CSS}</style>
+
+      {/* CTP Opt-in toggle */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,padding:"10px 14px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:6}}>
+        <div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2}}>📍 CLOSEST TO PIN BETS</div>
+          <div style={{fontSize:11,color:"var(--text3)"}}>Auto-created for all par 3s</div>
+        </div>
+        <button onClick={()=>onCtpOptToggle(!isOptedIn)}
+          style={{padding:"6px 14px",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1,borderRadius:3,cursor:"pointer",
+            background:isOptedIn?"var(--gold)":"var(--bg3)",color:isOptedIn?"#060a06":"var(--text3)",
+            border:`1px solid ${isOptedIn?"var(--gold)":"var(--border2)"}`}}>
+          {isOptedIn?"✓ OPTED IN":"OPT IN"}
+        </button>
+      </div>
+
+      {/* CTP Standings */}
+      {isOptedIn && ctpBets && Object.keys(ctpBets).length > 0 && (
+        <div style={{marginBottom:16}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:3,color:"var(--text3)",marginBottom:8}}>── CTP STANDINGS</div>
+          {Object.entries(ctpBets).sort(([a],[b])=>a.localeCompare(b)).map(([key, bet]) => {
+            const hIdx = bet.holeIndex;
+            const entries = Object.entries(bet.entries || {}).filter(([,e])=>e.feet!==undefined).sort(([,a],[,b])=>a.totalInches-b.totalInches);
+            const pending = Object.entries(bet.entries || {}).filter(([,e])=>e.lockedIn && e.feet===undefined);
+            return (
+              <div key={key} className="sb-card">
+                <div className="sb-header">
+                  <span style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"var(--gold)"}}>📍 HOLE {hIdx+1}</span>
+                  <span style={{fontSize:10,color:"var(--text3)",fontFamily:"'Bebas Neue'",letterSpacing:1}}>{Object.keys(bet.entries||{}).length} LOCKED IN</span>
+                </div>
+                {entries.length===0 && pending.length===0 && <div style={{padding:"10px 18px",fontSize:12,color:"var(--text3)",fontStyle:"italic"}}>No entries yet.</div>}
+                {entries.map(([pid,e],idx)=>(
+                  <div key={pid} style={{padding:"10px 18px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:10,background:idx===0?"#1c1600":"transparent"}}>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:15,minWidth:24,color:idx===0?"var(--gold)":idx===1?"#90b0b8":"var(--text3)"}}>{idx===0?"🏆":idx+1}</span>
+                    <div style={{flex:1,fontSize:13,fontWeight:idx===0?700:400}}>{e.playerName}{pid===myPlayer?.id&&<span style={{fontSize:9,color:"var(--green)",marginLeft:6,fontFamily:"'Bebas Neue'",letterSpacing:1}}>YOU</span>}</div>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:idx===0?"var(--gold)":"var(--text2)"}}>{e.feet}'{e.inches}"</div>
+                  </div>
+                ))}
+                {pending.map(([pid])=>(
+                  <div key={pid} style={{padding:"8px 18px",display:"flex",alignItems:"center",gap:10,opacity:0.5}}>
+                    <span style={{fontSize:9,color:"var(--amber)",fontFamily:"'Bebas Neue'",letterSpacing:1,minWidth:24}}>?</span>
+                    <div style={{flex:1,fontSize:12,color:"var(--text3)"}}>{players.find(p=>p.id===pid)?.name}</div>
+                    <div style={{fontSize:10,color:"var(--amber)"}}>⏳ playing</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div>

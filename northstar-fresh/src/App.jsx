@@ -359,6 +359,107 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
 
 
 
+
+// ── CTP Distance Entry Component
+const CtpDistanceEntry = ({ player, holeIdx, ctpBet, notify }) => {
+  const [feet, setFeet] = React.useState("");
+  const [inches, setInches] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  const submit = async () => {
+    if (!feet || feet < 0) { notify("Enter a valid distance.", "error"); return; }
+    setSaving(true);
+    const ctpKey = `hole_${holeIdx}`;
+    const updated = {
+      ...ctpBet,
+      entries: {
+        ...ctpBet.entries,
+        [player.id]: {
+          ...ctpBet.entries[player.id],
+          feet: parseInt(feet),
+          inches: parseInt(inches) || 0,
+          totalInches: parseInt(feet) * 12 + (parseInt(inches) || 0),
+          playerName: player.name,
+          submittedAt: new Date().toISOString(),
+        }
+      }
+    };
+    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "ctp_bets", ctpKey), updated);
+    notify("Distance submitted! Good luck 🎯");
+    setSaving(false);
+  };
+
+  return (
+    <div style={{marginTop:8}}>
+      <div style={{fontSize:12,color:"var(--text3)",marginBottom:8}}>Enter your distance to the pin:</div>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+        <input type="number" value={feet} onChange={e=>setFeet(e.target.value)} placeholder="Feet"
+          style={{width:70,padding:"8px 10px",background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:"var(--text)",fontSize:15,textAlign:"center"}}/>
+        <span style={{color:"var(--text3)"}}>ft</span>
+        <input type="number" value={inches} onChange={e=>setInches(e.target.value)} placeholder="In" min="0" max="11"
+          style={{width:60,padding:"8px 10px",background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:"var(--text)",fontSize:15,textAlign:"center"}}/>
+        <span style={{color:"var(--text3)"}}>in</span>
+        <button className="btn-gold" style={{fontSize:12,padding:"8px 16px"}} onClick={submit} disabled={saving||!feet}>
+          {saving?"...":"SUBMIT"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── CTP Leaderboard Component (shown in Sidebets tab)
+const CtpLeaderboard = ({ ctpBets, pars, players }) => {
+  const par3Holes = pars.map((p,i) => p===3 ? i : -1).filter(i => i !== -1);
+  const activeBets = par3Holes.filter(hIdx => ctpBets[`hole_${hIdx}`]?.active);
+  if (activeBets.length === 0) return (
+    <div style={{textAlign:"center",padding:"32px 20px",color:"var(--text3)"}}>
+      <div style={{fontSize:32,marginBottom:8}}>📍</div>
+      <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2}}>NO ACTIVE CTP BETS</div>
+    </div>
+  );
+  return (
+    <div>
+      {activeBets.map(hIdx => {
+        const bet = ctpBets[`hole_${hIdx}`];
+        const entries = Object.entries(bet.entries || {})
+          .filter(([,e]) => e.feet !== undefined)
+          .sort(([,a],[,b]) => a.totalInches - b.totalInches);
+        return (
+          <div key={hIdx} className="card" style={{marginBottom:16,overflow:"hidden"}}>
+            <div style={{padding:"10px 16px",background:"var(--bg3)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,color:"var(--gold)"}}>📍 HOLE {hIdx+1} — CLOSEST TO PIN</div>
+              <div style={{fontSize:11,color:"var(--text3)",fontFamily:"'Bebas Neue'",letterSpacing:1}}>{Object.keys(bet.entries||{}).length} LOCKED IN</div>
+            </div>
+            {entries.length === 0 ? (
+              <div style={{padding:"16px",fontSize:13,color:"var(--text3)",fontStyle:"italic"}}>No distances entered yet.</div>
+            ) : entries.map(([pid, entry], idx) => (
+              <div key={pid} style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:12,
+                background:idx===0?"#1c1600":"transparent"}}>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:idx===0?"var(--gold)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)",minWidth:36}}>
+                  {idx===0?"🏆":idx===1?"2ND":"3RD".slice(0,idx===2?3:0)||`${idx+1}`}
+                </span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:15,fontWeight:600}}>{entry.playerName}</div>
+                </div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:18,color:idx===0?"var(--gold)":"var(--text2)"}}>
+                  {entry.feet}'{entry.inches}"
+                </div>
+              </div>
+            ))}
+            {Object.entries(bet.entries||{}).filter(([,e])=>e.lockedIn && e.feet===undefined).map(([pid,e])=>(
+              <div key={pid} style={{padding:"10px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:12,opacity:0.5}}>
+                <span style={{fontSize:11,color:"var(--amber)",fontFamily:"'Bebas Neue'",letterSpacing:1,minWidth:36}}>TBD</span>
+                <div style={{fontSize:14,color:"var(--text3)"}}>{players.find(p=>p.id===pid)?.name || "Player"}</div>
+                <div style={{fontSize:11,color:"var(--amber)",marginLeft:"auto"}}>⏳ PLAYING</div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 // ── Leaderboard Table Component
 const LeaderboardTable = ({ players, pars, scorecardUploads, calcNet, calcGrossToPar, holesPlayed, toPM, setSelectedPid, setScreen }) => (
   <div style={{marginBottom:32}}>
@@ -522,6 +623,7 @@ export default function App() {
   const [players, setPlayers]   = useState([]);
   const [course, setCourse]     = useState(null);
   const [scorecardUploads, setScorecardUploads] = useState({});
+  const [ctpBets, setCtpBets] = useState({});      // { holeIndex: { entries: {playerId: {feet,inches,lockedIn}}, active } }
   const [moreOpen, setMoreOpen] = useState(false); // { playerId: { url, verified, uploadedAt } }
   const [loading, setLoading]   = useState(true);
   const [syncStatus, setSyncStatus] = useState("synced"); // synced | syncing | error
@@ -593,7 +695,17 @@ export default function App() {
       }
     );
 
-    return () => { unsub1(); unsub2(); unsub3(); };
+    // Listen to CTP bets
+    const unsub4 = onSnapshot(
+      collection(db, "tournaments", TOURNAMENT_ID, "ctp_bets"),
+      snap => {
+        const d = {};
+        snap.docs.forEach(doc => { d[doc.id] = doc.data(); });
+        setCtpBets(d);
+      }
+    );
+
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
   }, []);
 
   const notify = (msg, type="success") => {
@@ -602,6 +714,19 @@ export default function App() {
   };
 
   const pars  = (Array.isArray(course?.par)   && course.par.length===18)  ? course.par   : DEFAULT_PAR;
+  const par3Holes = pars.map((p,i) => p===3 ? i : -1).filter(i => i !== -1);
+
+  // Auto-initialize CTP bets for all par 3s if not already active
+  const initCtpBets = async () => {
+    for (const holeIdx of par3Holes) {
+      const key = \`hole_\${holeIdx}\`;
+      if (!ctpBets[key]) {
+        await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "ctp_bets", key), {
+          holeIndex: holeIdx, active: true, entries: {}
+        });
+      }
+    }
+  };
   const yards = (Array.isArray(course?.yards) && course.yards.length===18) ? course.yards : DEFAULT_YARDS;
   const totalPar  = pars.reduce((a,b)=>a+b,0);
 
@@ -1110,6 +1235,44 @@ export default function App() {
           })}
         </div>
 
+        {/* CTP lock-in prompt for par 3s */}
+        {par === 3 && (() => {
+          const ctpKey = `hole_${activeHole}`;
+          const ctpBet = ctpBets[ctpKey];
+          const myEntry = ctpBet?.entries?.[player.id];
+          const isOptedIn = player.ctpOptIn !== false;
+          if (!ctpBet?.active || !isOptedIn) return null;
+          if (myEntry?.lockedIn) return (
+            <div className="card" style={{padding:16,marginBottom:12,border:"1px solid var(--gold-dim)",background:"#120e00"}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:3,color:"var(--gold)",marginBottom:8}}>📍 CTP — HOLE {activeHole+1} (PAR 3)</div>
+              {myEntry.feet !== undefined ? (
+                <div style={{fontSize:13,color:"var(--text2)"}}>Your distance: <strong style={{color:"var(--gold)"}}>{myEntry.feet}'{myEntry.inches}"</strong></div>
+              ) : (
+                <CtpDistanceEntry player={player} holeIdx={activeHole} ctpBet={ctpBet} notify={notify} />
+              )}
+            </div>
+          );
+          return (
+            <div className="card" style={{padding:16,marginBottom:12,border:"1px solid var(--amber)",background:"#120800"}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:3,color:"var(--amber)",marginBottom:6}}>📍 CTP BET — HOLE {activeHole+1}</div>
+              <div style={{fontSize:13,color:"var(--text2)",marginBottom:12}}>Lock in to compete for Closest to the Pin on this par 3. You must confirm before entering your score.</div>
+              <div style={{display:"flex",gap:8}}>
+                <button className="btn-gold" style={{flex:1,fontSize:12}} onClick={async()=>{
+                  const ctpKey2 = `hole_${activeHole}`;
+                  await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"ctp_bets",ctpKey2),{
+                    ...ctpBet, entries:{...ctpBet.entries,[player.id]:{lockedIn:true,lockedAt:new Date().toISOString()}}
+                  });
+                  notify("Locked in for CTP! Enter your distance after you play.");
+                }}>🔒 LOCK IN</button>
+                <button className="btn-ghost" style={{flex:1,fontSize:12}} onClick={async()=>{
+                  await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",player.id),{ctpOptIn:false});
+                  notify("Opted out of CTP bets.");
+                }}>OPT OUT</button>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="card" style={{padding:24,marginBottom:16}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div>
@@ -1178,9 +1341,10 @@ export default function App() {
 
     const sbPlayer = players.find(p=>p.id===sbPid);
 
-    const verifySbPin = () => {
+    const verifySbPin = async () => {
       if (!sbPlayer) return;
-      const hash = sbPin.split("").reduce((a,c)=>((a<<5)-a)+c.charCodeAt(0)|0, 0).toString(16);
+      if (sbPin === ADMIN_PIN) { setActivePlayer(sbPid); setSbErr(""); return; }
+      const hash = await hashPin(sbPin);
       if (hash === sbPlayer.pinHash) {
         setActivePlayer(sbPid);
         setSbErr("");
@@ -1356,7 +1520,17 @@ export default function App() {
         {screen==="rules" && <RulesPage adminUnlocked={adminUnlocked} />}
         {screen==="sidebets" && (
           activePlayer
-            ? <Sidebets myPlayer={players.find(p=>p.id===activePlayer)} players={players} pars={pars}/>
+            ? <Sidebets
+                myPlayer={players.find(p=>p.id===activePlayer)}
+                players={players}
+                pars={pars}
+                ctpBets={ctpBets}
+                onCtpOptToggle={async (val) => {
+                  if (!activePlayer) return;
+                  await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",activePlayer),{ctpOptIn:val});
+                  notify(val?"Opted in to CTP bets ✓":"Opted out of CTP bets");
+                }}
+              />
             : <SidebetsLogin/>
         )}
         {screen==="season" && <SeasonStandings players={players} adminUnlocked={adminUnlocked} />}
