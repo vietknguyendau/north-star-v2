@@ -303,8 +303,10 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
           <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px 90px",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
             <span>NAME</span><span>HCP</span><span>SKILL LEVEL</span><span></span>
           </div>
-          {players.map(p=>(
-            <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 150px 90px",padding:"10px 16px",borderBottom:"1px solid var(--border)",alignItems:"center",gap:8}}>
+          {players.map(p=>{
+          const upload = scorecardUploads?.[p.id];
+          return (<React.Fragment key={p.id}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px 90px",padding:"10px 16px",borderBottom:"1px solid var(--border)",alignItems:"center",gap:8}}>
               <input defaultValue={p.name} key={p.id+"-name"} onBlur={e=>updateField(p.id,"name",e.target.value)} style={{width:"100%",padding:"5px 8px"}}/>
               <input type="number" defaultValue={p.handicap} key={p.id+"-hcp"} onBlur={e=>updateField(p.id,"handicap",e.target.value)} min="0" max="54" style={{width:65,borderColor:"var(--gold-dim)"}} title="Commissioner verified handicap"/>
               <select value={p.flight} onChange={e=>updateField(p.id,"flight",e.target.value)} style={{width:"100%"}}>
@@ -341,8 +343,8 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
                 </div>
               </div>
             )}
-          </div>
-        ))}
+          </React.Fragment>);
+        })}
           {players.length===0 && <div style={{padding:24,textAlign:"center",color:"var(--text3)",fontSize:13}}>No players yet. They'll appear here once they register.</div>}
         </div>
         <button className="btn-gold" style={{fontSize:13}} onClick={async()=>{
