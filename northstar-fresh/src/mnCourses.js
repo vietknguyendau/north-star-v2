@@ -123,16 +123,133 @@ export const MN_COURSES = [
   { name:"Worthington Golf Club", city:"Worthington", slope:124, rating:70.0, par:72 },
 ];
 
-// Search function — returns top matches
+// Combined course list — MN first, then WI
+export const ALL_COURSES = [...MN_COURSES, ...WI_COURSES];
+
+// Search function — returns top matches across MN + WI
 export const searchCourses = (query) => {
   if (!query || query.length < 2) return [];
   const q = query.toLowerCase();
-  return MN_COURSES
+  return ALL_COURSES
     .filter(c => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q))
     .sort((a,b) => {
-      const an = a.name.toLowerCase().indexOf(q);
-      const bn = b.name.toLowerCase().indexOf(q);
-      return an - bn;
+      // Prioritize name matches over city matches
+      const aName = a.name.toLowerCase().indexOf(q);
+      const bName = b.name.toLowerCase().indexOf(q);
+      if (aName !== bName) return aName - bName;
+      // MN slightly before WI for same-quality matches
+      const aMN = a.city.includes(", WI") ? 1 : 0;
+      const bMN = b.city.includes(", WI") ? 1 : 0;
+      return aMN - bMN;
     })
-    .slice(0, 8);
+    .slice(0, 10);
 };
+
+// ════════════════════════════════════════════════════════════════
+// Wisconsin Golf Course Database
+// Source: USGA NCRDB / WGA · Men's White/Blue tees
+// ════════════════════════════════════════════════════════════════
+export const WI_COURSES = [
+  // ── Milwaukee Metro
+  { name:"Brown Deer Park Golf Course", city:"Milwaukee, WI", slope:126, rating:70.8, par:72 },
+  { name:"Dretzka Park Golf Course", city:"Milwaukee, WI", slope:120, rating:69.4, par:72 },
+  { name:"Greenfield Park Golf Course", city:"Milwaukee, WI", slope:118, rating:68.9, par:71 },
+  { name:"Whitnall Park Golf Course", city:"Milwaukee, WI", slope:124, rating:70.1, par:72 },
+  { name:"Currie Park Golf Course", city:"Milwaukee, WI", slope:116, rating:68.2, par:70 },
+  { name:"Oakwood Park Golf Course", city:"Franklin, WI", slope:128, rating:71.0, par:72 },
+  { name:"Westmoor Country Club", city:"Brookfield, WI", slope:134, rating:72.2, par:72 },
+  { name:"Brookfield Country Club", city:"Brookfield, WI", slope:130, rating:71.4, par:72 },
+  { name:"Tuckaway Country Club", city:"Franklin, WI", slope:138, rating:73.1, par:72 },
+  { name:"Erin Hills Golf Course", city:"Erin, WI", slope:148, rating:76.5, par:72 },
+  { name:"The Club at Strawberry Creek", city:"Kenosha, WI", slope:128, rating:70.6, par:71 },
+  { name:"Kettle Hills Golf Course - Valley", city:"Richfield, WI", slope:124, rating:70.0, par:72 },
+  { name:"Kettle Hills Golf Course - Ponds", city:"Richfield, WI", slope:120, rating:69.2, par:72 },
+  { name:"Maplecrest Country Club", city:"Kenosha, WI", slope:122, rating:69.8, par:72 },
+  { name:"Petrifying Springs Golf Course", city:"Kenosha, WI", slope:119, rating:69.1, par:72 },
+  { name:"Songbird Hills Golf Club", city:"Hartland, WI", slope:126, rating:70.4, par:72 },
+  { name:"Hawks View Golf Club", city:"Lake Geneva, WI", slope:132, rating:71.8, par:72 },
+  { name:"Grand Geneva Resort - Brute", city:"Lake Geneva, WI", slope:148, rating:75.2, par:72 },
+  { name:"Grand Geneva Resort - Highlands", city:"Lake Geneva, WI", slope:132, rating:71.6, par:72 },
+  { name:"Abbey Springs Golf Course", city:"Fontana, WI", slope:126, rating:70.2, par:72 },
+  { name:"Geneva National - Palmer", city:"Lake Geneva, WI", slope:140, rating:74.0, par:72 },
+  { name:"Geneva National - Player", city:"Lake Geneva, WI", slope:138, rating:73.4, par:72 },
+  { name:"Geneva National - Trevino", city:"Lake Geneva, WI", slope:136, rating:72.8, par:72 },
+
+  // ── Madison Metro
+  { name:"University Ridge Golf Course", city:"Madison, WI", slope:138, rating:73.2, par:72 },
+  { name:"Yahara Hills Golf Course - East", city:"Madison, WI", slope:122, rating:70.0, par:72 },
+  { name:"Yahara Hills Golf Course - West", city:"Madison, WI", slope:120, rating:69.5, par:72 },
+  { name:"Odana Hills Golf Course", city:"Madison, WI", slope:118, rating:68.8, par:72 },
+  { name:"Monona Golf Course", city:"Madison, WI", slope:112, rating:67.4, par:70 },
+  { name:"Maple Bluff Country Club", city:"Madison, WI", slope:134, rating:72.0, par:72 },
+  { name:"Nakoma Golf Club", city:"Madison, WI", slope:130, rating:71.2, par:72 },
+  { name:"Blackhawk Country Club", city:"Madison, WI", slope:132, rating:71.6, par:72 },
+  { name:"The Bridges Golf Course", city:"Madison, WI", slope:128, rating:70.8, par:72 },
+  { name:"Bishops Bay Country Club", city:"Middleton, WI", slope:136, rating:72.6, par:72 },
+  { name:"Pleasant View Golf Course", city:"Middleton, WI", slope:120, rating:69.4, par:72 },
+  { name:"Timber Ridge Golf Club", city:"Verona, WI", slope:122, rating:69.8, par:71 },
+  { name:"Ironwood Golf Course", city:"Madison, WI", slope:116, rating:68.2, par:71 },
+
+  // ── Western Wisconsin (St. Croix / Hudson area — close to Twin Cities)
+  { name:"Hudson Golf Club", city:"Hudson, WI", slope:126, rating:70.6, par:72 },
+  { name:"Clifton Highlands Golf Course", city:"Prescott, WI", slope:130, rating:71.4, par:72 },
+  { name:"Kilkarney Hills Golf Club", city:"River Falls, WI", slope:124, rating:70.0, par:72 },
+  { name:"Pheasant Hills Golf Course", city:"Hudson, WI", slope:120, rating:69.2, par:72 },
+  { name:"St. Croix National Golf Club", city:"Somerset, WI", slope:136, rating:72.8, par:72 },
+  { name:"Troy Burne Golf Club", city:"Hudson, WI", slope:138, rating:73.6, par:72 },
+  { name:"Willow Run Golf Course", city:"Pewaukee, WI", slope:122, rating:69.6, par:71 },
+  { name:"Indianhead Golf Club", city:"Mosinee, WI", slope:124, rating:70.2, par:72 },
+  { name:"Skyline Golf Course", city:"Black River Falls, WI", slope:118, rating:68.8, par:72 },
+  { name:"Deer Track Golf Club", city:"Osceola, WI", slope:126, rating:70.4, par:72 },
+  { name:"Badlands Golf Course", city:"Hammond, WI", slope:128, rating:71.0, par:72 },
+
+  // ── Green Bay / Fox Valley
+  { name:"Brown County Golf Course", city:"Oneida, WI", slope:132, rating:71.8, par:72 },
+  { name:"Ledgeview Golf Course", city:"De Pere, WI", slope:124, rating:70.0, par:72 },
+  { name:"Thornberry Creek at Oneida", city:"Oneida, WI", slope:140, rating:74.2, par:72 },
+  { name:"Glacier Wood Golf Club", city:"Iola, WI", slope:128, rating:70.8, par:72 },
+  { name:"High Cliff Golf Course", city:"Sherwood, WI", slope:122, rating:69.4, par:72 },
+  { name:"Reid Golf Course", city:"Appleton, WI", slope:120, rating:69.2, par:72 },
+  { name:"Riverview Country Club", city:"Wausau, WI", slope:128, rating:71.0, par:72 },
+  { name:"Sentryworld Golf Course", city:"Stevens Point, WI", slope:142, rating:74.8, par:72 },
+  { name:"Stevens Point Country Club", city:"Stevens Point, WI", slope:126, rating:70.4, par:72 },
+
+  // ── Kohler / Sheboygan (world-class destination)
+  { name:"Whistling Straits - Straits", city:"Kohler, WI", slope:152, rating:76.9, par:72 },
+  { name:"Whistling Straits - Irish", city:"Kohler, WI", slope:140, rating:73.8, par:72 },
+  { name:"Blackwolf Run - River", city:"Kohler, WI", slope:148, rating:75.5, par:72 },
+  { name:"Blackwolf Run - Meadow Valleys", city:"Kohler, WI", slope:140, rating:73.2, par:72 },
+  { name:"The Bog Golf Course", city:"Saukville, WI", slope:136, rating:72.6, par:72 },
+  { name:"Washington County Golf Course", city:"Hartford, WI", slope:122, rating:69.8, par:71 },
+
+  // ── Door County
+  { name:"Horseshoe Bay Golf Club", city:"Egg Harbor, WI", slope:130, rating:71.2, par:72 },
+  { name:"Maxwelton Braes Golf Resort", city:"Baileys Harbor, WI", slope:124, rating:70.0, par:72 },
+  { name:"The Orchards Golf Club", city:"Egg Harbor, WI", slope:128, rating:70.8, par:72 },
+
+  // ── Northwoods Wisconsin
+  { name:"Trout Lake Golf Club", city:"Arbor Vitae, WI", slope:128, rating:70.6, par:72 },
+  { name:"Pinecrest Golf Club", city:"Waupaca, WI", slope:120, rating:69.2, par:72 },
+  { name:"Northbrook Country Club", city:"Luxemburg, WI", slope:124, rating:70.0, par:72 },
+  { name:"Forest Ridges Golf Course", city:"Minong, WI", slope:126, rating:70.4, par:72 },
+  { name:"Teal Wing Golf Club", city:"Hayward, WI", slope:130, rating:71.4, par:72 },
+  { name:"Voyager Village Country Club", city:"Danbury, WI", slope:122, rating:69.6, par:72 },
+  { name:"Lake Arrowhead Golf Course - Lakes", city:"Nekoosa, WI", slope:132, rating:71.8, par:72 },
+  { name:"Lake Arrowhead Golf Course - Pines", city:"Nekoosa, WI", slope:128, rating:70.8, par:72 },
+  { name:"Wild Rock Golf Club", city:"Wisconsin Dells, WI", slope:140, rating:73.8, par:72 },
+  { name:"Trappers Turn Golf Club - Arbor/Canyon", city:"Wisconsin Dells, WI", slope:134, rating:72.0, par:72 },
+  { name:"Trappers Turn Golf Club - Canyon/Lake", city:"Wisconsin Dells, WI", slope:132, rating:71.6, par:72 },
+  { name:"Christmas Mountain Village Golf", city:"Wisconsin Dells, WI", slope:124, rating:70.0, par:72 },
+
+  // ── Eau Claire / Chippewa Valley
+  { name:"Eau Claire Golf & Country Club", city:"Eau Claire, WI", slope:130, rating:71.2, par:72 },
+  { name:"Hickory Hills Golf Course", city:"Eau Claire, WI", slope:120, rating:69.2, par:72 },
+  { name:"Riverview Golf Course", city:"Chippewa Falls, WI", slope:118, rating:68.6, par:72 },
+  { name:"Whispering Springs Golf Club", city:"Fond du Lac, WI", slope:128, rating:70.8, par:72 },
+
+  // ── La Crosse Area
+  { name:"La Crosse Country Club", city:"La Crosse, WI", slope:132, rating:71.6, par:72 },
+  { name:"Burns Park Golf Course", city:"La Crosse, WI", slope:116, rating:68.0, par:70 },
+  { name:"Drugan's Castle Mound", city:"Holmen, WI", slope:122, rating:69.6, par:72 },
+  { name:"Pine Valley Golf Club", city:"Onalaska, WI", slope:126, rating:70.4, par:72 },
+];
