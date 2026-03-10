@@ -147,6 +147,50 @@ button{cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;b
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ── AdminView as standalone component to prevent remount on parent re-render
+
+// ── PIN Reset Button (used in AdminView per player)
+function PinResetButton({ player, notify }) {
+  const [open, setOpen]       = React.useState(false);
+  const [newPin, setNewPin]   = React.useState("");
+  const [saving, setSaving]   = React.useState(false);
+
+  const save = async () => {
+    if (newPin.length !== 4) return;
+    setSaving(true);
+    const hash = await hashPin(newPin);
+    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "players", player.id), { pinHash: hash }, { merge: true });
+    setSaving(false);
+    setOpen(false);
+    setNewPin("");
+    notify(player.name + "'s PIN updated.");
+  };
+
+  if (!open) return (
+    <button onClick={()=>setOpen(true)}
+      style={{padding:"5px 10px",fontSize:11,fontFamily:"'Bebas Neue'",letterSpacing:1,
+        background:"transparent",border:"1px solid var(--border2)",color:"var(--text3)",
+        borderRadius:3,cursor:"pointer",whiteSpace:"nowrap"}}>
+      🔑 PIN
+    </button>
+  );
+
+  return (
+    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+      <input type="password" maxLength={4} placeholder="New PIN"
+        value={newPin} onChange={e=>setNewPin(e.target.value.replace(/\D/g,"").slice(0,4))}
+        style={{width:80,padding:"5px 8px",fontSize:13,background:"var(--bg3)",
+          border:"1px solid var(--gold-dim)",borderRadius:3,color:"var(--text)",textAlign:"center"}}/>
+      <button onClick={save} disabled={saving||newPin.length!==4}
+        style={{padding:"5px 8px",fontSize:11,fontFamily:"'Bebas Neue'",letterSpacing:1,
+          background:"var(--gold)",color:"#060a06",border:"none",borderRadius:3,cursor:"pointer"}}>
+        {saving?"...":"SAVE"}
+      </button>
+      <button onClick={()=>{setOpen(false);setNewPin("");}}
+        style={{padding:"5px 6px",background:"transparent",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:14}}>✕</button>
+    </div>
+  );
+}
+
 function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput, setPinInput,
   pinError, setPinError, savePlayer, removePlayerDb, saveCourse, setCourse, updateField, notify,
   scorecardUploads }) {
@@ -300,19 +344,20 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
         {/* Players */}
         <div className="section-label">── PLAYER ROSTER ({players.length} players)</div>
         <div className="card" style={{overflow:"hidden",marginBottom:12}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px 90px",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
-            <span>NAME</span><span>HCP</span><span>SKILL LEVEL</span><span></span>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px auto auto",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
+            <span>NAME</span><span>HCP</span><span>SKILL LEVEL</span><span>PIN</span><span></span>
           </div>
           {players.map(p=>{
           const upload = scorecardUploads?.[p.id];
           return (<React.Fragment key={p.id}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px 90px",padding:"10px 16px",borderBottom:"1px solid var(--border)",alignItems:"center",gap:8}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px auto auto",padding:"10px 16px",borderBottom:"1px solid var(--border)",alignItems:"center",gap:8}}>
               <input defaultValue={p.name} key={p.id+"-name"} onBlur={e=>updateField(p.id,"name",e.target.value)} style={{width:"100%",padding:"5px 8px"}}/>
               <input type="number" defaultValue={p.handicap} key={p.id+"-hcp"} onBlur={e=>updateField(p.id,"handicap",e.target.value)} min="0" max="54" style={{width:65,borderColor:"var(--gold-dim)"}} title="Commissioner verified handicap"/>
               <select value={p.flight} onChange={e=>updateField(p.id,"flight",e.target.value)} style={{width:"100%"}}>
                 {SKILL_LEVELS.map(f=><option key={f}>{f}</option>)}
               </select>
-              <button className="btn-danger" onClick={()=>removePlayerDb(p.id)}>✕ Remove</button>
+              <PinResetButton player={p} notify={notify}/>
+              <button className="btn-danger" onClick={()=>removePlayerDb(p.id)}>✕</button>
             </div>
             {/* Scorecard verification panel */}
             {!scorecardUploads?.[p.id]?.url && (
