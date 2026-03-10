@@ -1235,40 +1235,52 @@ export default function App() {
           })}
         </div>
 
-        {/* CTP lock-in prompt for par 3s */}
+        {/* CTP card — always visible on par 3s */}
         {par === 3 && (() => {
           const ctpKey = `hole_${activeHole}`;
           const ctpBet = ctpBets[ctpKey];
           const myEntry = ctpBet?.entries?.[player.id];
-          const isOptedIn = player.ctpOptIn !== false;
-          if (!ctpBet?.active || !isOptedIn) return null;
-          if (myEntry?.lockedIn) return (
-            <div className="card" style={{padding:16,marginBottom:12,border:"1px solid var(--gold-dim)",background:"#120e00"}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:3,color:"var(--gold)",marginBottom:8}}>📍 CTP — HOLE {activeHole+1} (PAR 3)</div>
-              {myEntry.feet !== undefined ? (
-                <div style={{fontSize:13,color:"var(--text2)"}}>Your distance: <strong style={{color:"var(--gold)"}}>{myEntry.feet}'{myEntry.inches}"</strong></div>
-              ) : (
-                <CtpDistanceEntry player={player} holeIdx={activeHole} ctpBet={ctpBet} notify={notify} />
-              )}
+
+          // Already locked in + distance entered
+          if (myEntry?.lockedIn && myEntry.feet !== undefined) return (
+            <div style={{marginBottom:12,padding:"12px 16px",background:"#0d1a0d",border:"1px solid var(--green-dim)",borderRadius:6,display:"flex",alignItems:"center",gap:12}}>
+              <span style={{fontSize:20}}>📍</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:2}}>CTP — HOLE {activeHole+1}</div>
+                <div style={{fontSize:13,color:"var(--text2)"}}>Your distance: <strong style={{color:"var(--gold)",fontFamily:"'Bebas Neue'",fontSize:16}}>{myEntry.feet}' {myEntry.inches}"</strong></div>
+              </div>
+              <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--green)"}}>ENTERED</span>
             </div>
           );
+
+          // Locked in, need to enter distance
+          if (myEntry?.lockedIn) return (
+            <div style={{marginBottom:12,padding:"14px 16px",background:"#120e00",border:"1px solid var(--gold-dim)",borderRadius:6}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--gold)",marginBottom:10}}>📍 CTP — HOLE {activeHole+1} · ENTER YOUR DISTANCE</div>
+              <CtpDistanceEntry player={player} holeIdx={activeHole} ctpBet={ctpBet} notify={notify} />
+            </div>
+          );
+
+          // Not yet locked in — show opt-in prompt
           return (
-            <div className="card" style={{padding:16,marginBottom:12,border:"1px solid var(--amber)",background:"#120800"}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:3,color:"var(--amber)",marginBottom:6}}>📍 CTP BET — HOLE {activeHole+1}</div>
-              <div style={{fontSize:13,color:"var(--text2)",marginBottom:12}}>Lock in to compete for Closest to the Pin on this par 3. You must confirm before entering your score.</div>
-              <div style={{display:"flex",gap:8}}>
-                <button className="btn-gold" style={{flex:1,fontSize:12}} onClick={async()=>{
-                  const ctpKey2 = `hole_${activeHole}`;
-                  await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"ctp_bets",ctpKey2),{
-                    ...ctpBet, entries:{...ctpBet.entries,[player.id]:{lockedIn:true,lockedAt:new Date().toISOString()}}
-                  });
-                  notify("Locked in for CTP! Enter your distance after you play.");
-                }}>🔒 LOCK IN</button>
-                <button className="btn-ghost" style={{flex:1,fontSize:12}} onClick={async()=>{
-                  await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",player.id),{ctpOptIn:false});
-                  notify("Opted out of CTP bets.");
-                }}>OPT OUT</button>
+            <div style={{marginBottom:12,padding:"14px 16px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                <span style={{fontSize:22}}>📍</span>
+                <div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:3,color:"var(--gold)"}}>CLOSEST TO PIN — HOLE {activeHole+1}</div>
+                  <div style={{fontSize:12,color:"var(--text3)"}}>Par 3 · Opt in to compete for CTP</div>
+                </div>
               </div>
+              <button className="btn-gold" style={{width:"100%",fontSize:13,padding:12,letterSpacing:2}} onClick={async()=>{
+                const existing = ctpBet || { holeIndex: activeHole, active: true, entries: {} };
+                await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"ctp_bets",ctpKey),{
+                  ...existing,
+                  entries:{ ...(existing.entries||{}), [player.id]:{ lockedIn:true, lockedAt:new Date().toISOString() } }
+                });
+                notify("Locked in for CTP! Enter your distance after you play the hole.");
+              }}>
+                🔒 LOCK IN FOR CTP
+              </button>
             </div>
           );
         })()}
