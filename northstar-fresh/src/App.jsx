@@ -619,6 +619,41 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
           notify("Player added.");
         }}>+ ADD PLAYER</button>
 
+        {/* ── Email Export */}
+        {(() => {
+          const withEmail = players.filter(p=>p.email);
+          const noEmail   = players.filter(p=>!p.email);
+          const allEmails = withEmail.map(p=>p.email).join(", ");
+          return (
+            <div className="card" style={{padding:20,marginTop:16}}>
+              <div className="section-label" style={{marginBottom:10}}>── EMAIL LIST ({withEmail.length} of {players.length} players)</div>
+              {withEmail.length > 0 ? (
+                <>
+                  <div style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:4,padding:"12px 14px",fontSize:12,fontFamily:"'DM Mono'",color:"var(--text2)",lineHeight:1.8,wordBreak:"break-all",marginBottom:12,maxHeight:120,overflowY:"auto"}}>
+                    {allEmails}
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button className="btn-gold" style={{fontSize:12}} onClick={()=>{
+                      navigator.clipboard.writeText(allEmails);
+                      notify("Emails copied to clipboard! ✓");
+                    }}>📋 COPY ALL EMAILS</button>
+                    <button className="btn-ghost" style={{fontSize:12}} onClick={()=>{
+                      window.open(`mailto:?bcc=${encodeURIComponent(allEmails)}`,"_blank");
+                    }}>✉️ OPEN IN MAIL APP</button>
+                  </div>
+                  {noEmail.length > 0 && (
+                    <div style={{fontSize:11,color:"var(--amber)",marginTop:10}}>
+                      ⚠ {noEmail.length} player{noEmail.length>1?"s":""} without email: {noEmail.map(p=>p.name).join(", ")}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{fontSize:13,color:"var(--text3)",fontStyle:"italic"}}>No player emails on file yet.</div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ── One-Off Tournament Creator */}
         <div style={{marginTop:32}}>
           <div className="section-label">── ONE-OFF TOURNAMENTS</div>
