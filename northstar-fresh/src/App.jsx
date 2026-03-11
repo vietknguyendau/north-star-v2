@@ -1119,6 +1119,303 @@ function AppInner() {
 
   // ══════════════════════════════════════════════════════════════════════════
   // LEADERBOARD
+  // ══════════════════════════════════════════════════════════════════════════
+  // TOURNAMENT TAB
+  const TournamentTab = () => {
+    const [tourneys, setTourneys]   = React.useState([]);
+    const [tabStep, setTabStep]     = React.useState("list");  // list | login | scores
+    const [selTourney, setSelTourney] = React.useState(null);
+    const [tLoginPid, setTLoginPid] = React.useState("");
+    const [tLoginPin, setTLoginPin] = React.useState("");
+    const [tLoginErr, setTLoginErr] = React.useState("");
+    const [tPwInput,  setTPwInput]  = React.useState("");
+    const [tPwErr,    setTPwErr]    = React.useState("");
+    const [tLogging,  setTLogging]  = React.useState(false);
+    const [tStep,     setTStep]     = React.useState("name"); // name | pin | password
+
+    const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
+
+    React.useEffect(() => {
+      const unsub = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments"), snap => {
+        const arr = snap.docs.map(d=>({id:d.id,...d.data()}));
+        arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+        setTourneys(arr);
+      });
+      return () => unsub();
+    }, []);
+
+    const selectedPlayer = players.find(p=>p.id===tLoginPid);
+
+    const handleTLogin = async () => {
+      if (!selectedPlayer) return;
+      setTLogging(true);
+      const isAdmin = tLoginPin === ADMIN_PIN;
+      const hash = isAdmin ? null : await hashPin(tLoginPin);
+      if (!isAdmin && hash !== selectedPlayer.pinHash) {
+        setTLoginErr("Incorrect PIN. Try again.");
+        setTLogging(false);
+        setTLoginPin("");
+        return;
+      }
+      setTLogging(false);
+      // PIN verified — check if tournament needs password and player isn't already in
+      if (selTourney?.hasPassword && selectedPlayer.oneOffId !== selTourney.id) {
+        setTStep("password");
+      } else {
+        // Already joined or no password — go straight to scores
+        setActivePlayer(selectedPlayer.id);
+        setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
+        setScreen("tournament-scores");
+        setTabStep("scores");
+      }
+    };
+
+    const handleJoinWithPassword = async () => {
+      if (!tPwInput.trim()) { setTPwErr("Enter the tournament password."); return; }
+      const pwHash = await hashPin(tPwInput.trim());
+      if (pwHash !== selTourney.pwHash) { setTPwErr("Incorrect password."); return; }
+      await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",selectedPlayer.id),{oneOffId:selTourney.id});
+      notify(`Joined "${selTourney.title}"! 🏌️`);
+      setActivePlayer(selectedPlayer.id);
+      setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
+      setScreen("tournament-scores");
+      setTabStep("scores");
+    };
+
+    // Inline live leaderboard for a one-off tournament
+    const TourneyLeaderboard = ({ t }) => {
+      const joined = t.hasPassword
+        ? players.filter(p=>p.oneOffId===t.id && p.scores?.some(Boolean))
+        : players.filter(p=>p.scores?.some(Boolean));
+      const rows = joined.map(p=>{
+        const gross=p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
+        let net=0;
+        p.scores.forEach((s,i)=>{
+          if(!s)return; let str=0;
+          if(HCP_S[i]<=p.handicap)str++;
+          if(p.handicap>18&&HCP_S[i]<=p.handicap-18)str++;
+          net+=s-str;
+        });
+        return {...p,gross,net,thru:holesPlayed(p)};
+      }).sort((a,b)=>a.net-b.net);
+      if (!rows.length) return (
+        <div style={{padding:"20px",textAlign:"center",color:"var(--text3)",fontSize:13,fontStyle:"italic"}}>
+          No scores yet — be the first on the board.
+        </div>
+      );
+      return (
+        <div style={{borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}>
+          <div style={{display:"grid",gridTemplateColumns:"44px 1fr 52px 68px 68px",background:"var(--bg3)",padding:"8px 14px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
+            <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span>
+            <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>NET</span>
+          </div>
+          {rows.map((p,idx)=>(
+            <div key={p.id} style={{display:"grid",gridTemplateColumns:"44px 1fr 52px 68px 68px",padding:"11px 14px",borderBottom:"1px solid var(--border)",
+              borderLeft:idx===0?"3px solid var(--green)":"3px solid transparent"}}>
+              <span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
+                {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
+              </span>
+              <div>
+                <div style={{fontSize:15,fontWeight:600,color:"var(--text2)"}}>{p.name}</div>
+                <div style={{fontSize:10,color:"var(--text3)"}}>HCP {p.handicap}</div>
+              </div>
+              <div style={{textAlign:"center",fontSize:14,color:p.thru===18?"var(--green)":"var(--text)"}}>{p.thru===18?"F":p.thru||"—"}</div>
+              <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,color:"var(--text3)"}}>{p.gross||"—"}</div>
+              <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:16,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{toPM(p.net)}</div>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    // ── SCORES VIEW (after login)
+    if (tabStep === "scores" && screen === "tournament-scores") {
+      return <MyScores/>;
+    }
+
+    // ── LOGIN VIEW for a specific tournament
+    if (tabStep === "login" && selTourney) {
+      return (
+        <div className="fade-up" style={{maxWidth:420,margin:"0 auto"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
+            <button onClick={()=>{setTabStep("list");setTStep("name");setTLoginPid("");setTLoginPin("");setTLoginErr("");setTPwInput("");setTPwErr("");}}
+              style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
+            <div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:selTourney.isActive?"var(--green)":"var(--text3)"}}>
+                {selTourney.isActive?"🟢 IN PROGRESS":"⛳ TOURNAMENT"}
+              </div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2}}>{selTourney.title}</div>
+              <div style={{fontSize:12,color:"var(--text3)"}}>{selTourney.date}{selTourney.course?` · ${selTourney.course}`:""}</div>
+            </div>
+          </div>
+
+          {/* Name step */}
+          {tStep === "name" && (
+            <div className="card" style={{padding:28}}>
+              <div className="section-label" style={{marginBottom:8}}>YOUR NAME</div>
+              <select value={tLoginPid} onChange={e=>{setTLoginPid(e.target.value);setTLoginErr("");}}
+                style={{width:"100%",padding:"10px 12px",fontSize:15,background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:tLoginPid?"var(--text)":"var(--text3)",marginBottom:20}}>
+                <option value="">Select your name...</option>
+                {players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
+                disabled={!tLoginPid} onClick={()=>setTStep("pin")}>
+                CONTINUE →
+              </button>
+            </div>
+          )}
+
+          {/* PIN step */}
+          {tStep === "pin" && (
+            <div className="card" style={{padding:28}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+                <button onClick={()=>{setTStep("name");setTLoginPin("");setTLoginErr("");}}
+                  style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
+              </div>
+              <div className="section-label" style={{marginBottom:8}}>YOUR PIN</div>
+              <div style={{display:"flex",justifyContent:"center",gap:10,marginBottom:16}}>
+                {[0,1,2,3].map(i=>(
+                  <div key={i} style={{width:48,height:56,border:"2px solid "+(tLoginPin.length>i?"var(--gold)":"var(--border2)"),borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,background:"var(--bg3)",color:"var(--gold)",transition:"all .15s"}}>
+                    {tLoginPin.length>i?"●":""}
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+                {[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map((k,i)=>(
+                  <button key={i} onClick={()=>{
+                    if(k==="⌫") setTLoginPin(p=>p.slice(0,-1));
+                    else if(k===""||tLoginPin.length>=4) return;
+                    else { setTLoginPin(p=>p+k); setTLoginErr(""); }
+                  }} style={{padding:"15px 8px",fontFamily:"'DM Mono'",fontSize:20,background:k==="⌫"?"var(--bg3)":"var(--bg4)",border:"1px solid var(--border2)",borderRadius:6,color:k==="⌫"?"var(--red)":"var(--text)",cursor:k===""?"default":"pointer",opacity:k===""?0:1}}>
+                    {k}
+                  </button>
+                ))}
+              </div>
+              {tLoginErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{tLoginErr}</div>}
+              <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
+                onClick={handleTLogin} disabled={tLogging||tLoginPin.length!==4}>
+                {tLogging?"...":"VERIFY PIN →"}
+              </button>
+            </div>
+          )}
+
+          {/* Password step */}
+          {tStep === "password" && (
+            <div className="card" style={{padding:28}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+                <button onClick={()=>{setTStep("pin");setTLoginPin("");setTPwInput("");setTPwErr("");}}
+                  style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
+              </div>
+              <div style={{textAlign:"center",marginBottom:20}}>
+                <div style={{fontSize:32,marginBottom:8}}>🔒</div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,marginBottom:6}}>{selTourney.title}</div>
+                <div style={{fontSize:13,color:"var(--text3)"}}>This tournament is invite-only. Enter the password your commissioner shared with you.</div>
+              </div>
+              <input value={tPwInput} onChange={e=>{setTPwInput(e.target.value);setTPwErr("");}}
+                placeholder="Tournament password" style={{width:"100%",fontSize:15,marginBottom:8}}/>
+              {tPwErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{tPwErr}</div>}
+              <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
+                onClick={handleJoinWithPassword} disabled={!tPwInput.trim()}>
+                JOIN TOURNAMENT →
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── LIST VIEW (default)
+    const hasActive = !!activeOneOff;
+    const activeTourney = activeOneOff ? { ...activeOneOff, isActive: true } : null;
+    const pastTourneys = tourneys;
+
+    return (
+      <div className="fade-up">
+        <div style={{marginBottom:28}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:4,color:"var(--text3)",marginBottom:4}}>NORTH STAR AMATEUR SERIES</div>
+          <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2,marginBottom:4}}>TOURNAMENTS</h2>
+          <p style={{fontSize:13,color:"var(--text3)"}}>One-off events, scrambles, and special rounds. Tap any tournament to join and enter scores.</p>
+        </div>
+
+        {/* Active / In Progress */}
+        {activeTourney && (
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",display:"inline-block"}}/>
+              OPEN NOW
+            </div>
+            <div style={{background:"#060e06",border:"2px solid var(--green-dim)",borderRadius:10,overflow:"hidden"}}>
+              <div style={{padding:"20px 20px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:14}}>
+                  <div>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:2,color:"var(--text)"}}>{activeTourney.title}</div>
+                    <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>
+                      {activeTourney.date}{activeTourney.course?` · ${activeTourney.course}`:""}
+                    </div>
+                    {activeTourney.courseDetails && (
+                      <div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>
+                        Par {activeTourney.courseDetails.par} · Rating {activeTourney.courseDetails.rating} · Slope {activeTourney.courseDetails.slope}
+                      </div>
+                    )}
+                    {activeTourney.notes && <div style={{fontSize:12,color:"var(--text2)",marginTop:6,fontStyle:"italic"}}>{activeTourney.notes}</div>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                    {activeTourney.hasPassword && (
+                      <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--text3)",border:"1px solid var(--border2)",borderRadius:3,padding:"2px 8px"}}>🔒 INVITE ONLY</span>
+                    )}
+                    <button className="btn-gold" style={{fontSize:13,padding:"10px 20px",letterSpacing:2}}
+                      onClick={()=>{ setSelTourney(activeTourney); setTabStep("login"); setTStep("name"); }}>
+                      ENTER SCORES →
+                    </button>
+                  </div>
+                </div>
+                <TourneyLeaderboard t={activeTourney}/>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!hasActive && (
+          <div style={{padding:"32px 20px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,textAlign:"center",marginBottom:28}}>
+            <div style={{fontSize:36,marginBottom:10}}>⛳</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,marginBottom:6}}>NO ACTIVE TOURNAMENT</div>
+            <div style={{fontSize:13,color:"var(--text3)"}}>Check back when the commissioner starts one. Past results are below.</div>
+          </div>
+        )}
+
+        {/* Past tournaments */}
+        {pastTourneys.length > 0 && (
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:12}}>── PAST TOURNAMENTS</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {pastTourneys.map(t => {
+                const winner = t.snapshot?.[0];
+                return (
+                  <div key={t.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                    <div>
+                      <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:1,color:"var(--text)"}}>{t.title}</div>
+                      <div style={{fontSize:12,color:"var(--text3)"}}>{t.date}{t.course?` · ${t.course}`:""}</div>
+                      {winner && <div style={{fontSize:12,color:"var(--gold)",marginTop:4}}>🏆 {winner.name} · Net {winner.net}</div>}
+                    </div>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--text3)",border:"1px solid var(--border2)",borderRadius:3,padding:"2px 8px"}}>
+                      {t.snapshot?.length||0} PLAYERS
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!hasActive && pastTourneys.length === 0 && (
+          <div style={{textAlign:"center",padding:"20px",color:"var(--text3)",fontSize:13}}>No tournaments yet.</div>
+        )}
+      </div>
+    );
+  };
+
   const Leaderboard = () => {
     const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
     const oneOffPlayers = activeOneOff
@@ -1948,6 +2245,7 @@ function AppInner() {
   // ROOT RENDER
   const NAV_PRIMARY = [
     ["leaderboard","🏆 LEADERBOARD"],
+    ["tournament","⛳ TOURNAMENTS"],
     ["sidebets","🤝 SIDEBETS"],
     ["season","🌟 STANDINGS"],
     ["history","📖 HISTORY"],
@@ -1960,7 +2258,7 @@ function AppInner() {
   ];
   const NAV_MORE = [];
   const NAV = [...NAV_PRIMARY];
-  const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen;
+  const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen==="tournament-scores"?"tournament":screen;
 
   return (
     <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--text)"}}>
@@ -2024,6 +2322,7 @@ function AppInner() {
       {/* Body */}
       <div style={{maxWidth:1100,margin:"0 auto",padding:"24px 16px"}}>
         {screen==="leaderboard"     && <Leaderboard/>}
+        {(screen==="tournament"||screen==="tournament-scores") && <TournamentTab/>}
         {screen==="scorecard"       && <ScorecardView/>}
         {screen==="course"          && <CourseView/>}
         {screen==="register"        && <RegisterView/>}
