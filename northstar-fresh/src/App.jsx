@@ -239,7 +239,8 @@ function OneOffCreator({ players, notify }) {
 
   const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
 
-  const [password, setPassword] = React.useState("");
+  const [password,   setPassword]   = React.useState("");
+  const [courseInfo, setCourseInfo] = React.useState(null);
 
   const startTournament = async () => {
     if (!title.trim()) { notify("Enter a title before starting.", "error"); return; }
@@ -256,6 +257,7 @@ function OneOffCreator({ players, notify }) {
       id: oneOffId,
       title: title.trim(), date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
       course: course.trim(), notes: notes.trim(), startedAt: Date.now(),
+      courseDetails: courseInfo || null,
       pwHash, hasPassword: !!password.trim(),
     });
     setStarting(false);
@@ -290,11 +292,12 @@ function OneOffCreator({ players, notify }) {
       id, title: t.title,
       date: t.date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
       course: t.course || "", notes: t.notes || "",
+      courseDetails: t.courseDetails || null,
       snapshot: snap, createdAt: Date.now(),
     });
     // Clear active state
     await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
-    setTitle(""); setDate(""); setCourse2(""); setNotes("");
+    setTitle(""); setDate(""); setCourse2(""); setNotes(""); setCourseInfo(null);
     setSaving(false);
     notify(`"${t.title}" locked and saved! View it in History. 🏆`);
   };
@@ -323,6 +326,11 @@ function OneOffCreator({ players, notify }) {
               <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:4}}>🟢 TOURNAMENT IN PROGRESS</div>
               <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"var(--text)"}}>{active.title}</div>
               <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{active.date}{active.course?` · ${active.course}`:""}</div>
+              {active.courseDetails && (
+                <div style={{fontSize:11,color:"var(--text3)",marginTop:3}}>
+                  Par {active.courseDetails.par} · Rating {active.courseDetails.rating} · Slope {active.courseDetails.slope}
+                </div>
+              )}
               <div style={{fontSize:12,color:"var(--green)",marginTop:6}}>{playersWithScores} players have entered scores</div>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -346,13 +354,28 @@ function OneOffCreator({ players, notify }) {
               <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>TOURNAMENT TITLE *</div>
               <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. July 4th Scramble" style={{width:"100%",fontSize:15,padding:"9px 12px"}}/>
             </div>
-            <div>
+            <div style={{gridColumn:"1/-1"}}>
               <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>DATE</div>
-              <input value={date} onChange={e=>setDate(e.target.value)} placeholder="e.g. July 4, 2026" style={{width:"100%"}}/>
+              <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+                style={{width:"100%",colorScheme:"dark"}}/>
+              {date && <div style={{fontSize:11,color:"var(--text3)",marginTop:3}}>
+                {new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
+              </div>}
             </div>
-            <div>
+            <div style={{gridColumn:"1/-1"}}>
               <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>COURSE</div>
-              <input value={course} onChange={e=>setCourse2(e.target.value)} placeholder="e.g. Rum River Hills" style={{width:"100%"}}/>
+              <CourseSearch onSelect={c=>{
+                setCourse2(c.name);
+                setCourseInfo(c);
+              }}/>
+              {courseInfo && (
+                <div style={{marginTop:8,padding:"10px 14px",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:4,fontSize:12,color:"var(--text3)",display:"flex",gap:20,flexWrap:"wrap"}}>
+                  <span>Par <strong style={{color:"var(--text)"}}>{courseInfo.par}</strong></span>
+                  <span>Rating <strong style={{color:"var(--text)"}}>{courseInfo.rating}</strong></span>
+                  <span>Slope <strong style={{color:"var(--text)"}}>{courseInfo.slope}</strong></span>
+                  <span style={{color:"var(--text2)"}}>{courseInfo.city}</span>
+                </div>
+              )}
             </div>
             <div style={{gridColumn:"1/-1"}}>
               <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>NOTES (optional)</div>
