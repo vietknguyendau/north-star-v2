@@ -11,6 +11,28 @@ import {
   doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc
 } from "firebase/firestore";
 
+// ── Error Boundary — shows friendly message instead of black screen
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) return (
+      <div style={{minHeight:"100vh",background:"#080c08",color:"#e4dcc8",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"Georgia,serif"}}>
+        <div style={{maxWidth:480,textAlign:"center"}}>
+          <div style={{fontSize:48,marginBottom:16}}>⛳</div>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:3,color:"#c8a830",marginBottom:12}}>SOMETHING WENT WRONG</div>
+          <p style={{fontSize:14,color:"#a09880",lineHeight:1.8,marginBottom:24}}>The app hit an error loading. Try refreshing the page. If it keeps happening, the commissioner is on it.</p>
+          <button onClick={()=>window.location.reload()} style={{background:"#c8a830",color:"#060a06",border:"none",padding:"12px 32px",fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:2,cursor:"pointer",borderRadius:3}}>
+            RELOAD PAGE
+          </button>
+          <div style={{marginTop:16,fontSize:11,color:"#607060",fontFamily:"monospace"}}>{this.state.error?.message}</div>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 
 // ── Simple PIN hash (SHA-256 via Web Crypto API)
 const hashPin = async (pin) => {
@@ -663,7 +685,7 @@ function CourseSearch({ onSelect }) {
   );
 }
 
-export default function App() {
+function AppInner() {
   // ── Firebase state ──
   const [players, setPlayers]   = useState([]);
   const [course, setCourse]     = useState(null);
@@ -1664,24 +1686,21 @@ export default function App() {
         {screen==="course"          && <CourseView/>}
         {screen==="register"        && <RegisterView/>}
         {(screen==="login"||screen==="my-scores-login") && <LoginView/>}
-        {screen==="my-scores-login" && <MyScoresLogin/>}
         {screen==="my-scores"       && <MyScores/>}
         {screen==="history" && <TournamentHistory players={players} />}
         {screen==="rules" && <RulesPage adminUnlocked={adminUnlocked} />}
         {screen==="sidebets" && (
-          activePlayer
-            ? <Sidebets
-                myPlayer={players.find(p=>p.id===activePlayer)}
-                players={players}
-                pars={pars}
-                ctpBets={ctpBets}
-                onCtpOptToggle={async (val) => {
-                  if (!activePlayer) return;
-                  await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",activePlayer),{ctpOptIn:val});
-                  notify(val?"Opted in to CTP bets ✓":"Opted out of CTP bets");
-                }}
-              />
-            : <SidebetsLogin/>
+          <Sidebets
+            myPlayer={activePlayer ? players.find(p=>p.id===activePlayer) : null}
+            players={players}
+            pars={pars}
+            ctpBets={ctpBets}
+            onCtpOptToggle={async (val) => {
+              if (!activePlayer) return;
+              await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",activePlayer),{ctpOptIn:val});
+              notify(val?"Opted in to CTP bets ✓":"Opted out of CTP bets");
+            }}
+          />
         )}
         {screen==="season" && <SeasonStandings players={players} adminUnlocked={adminUnlocked} />}
         {screen==="handicap" && <HandicapTracker players={players} adminUnlocked={adminUnlocked} onHandicapUpdate={(pid,hcp)=>setPlayers(prev=>prev.map(p=>p.id===pid?{...p,handicap:hcp}:p))} />}
@@ -1697,4 +1716,8 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+export default function App() {
+  return <ErrorBoundary><AppInner/></ErrorBoundary>;
 }
