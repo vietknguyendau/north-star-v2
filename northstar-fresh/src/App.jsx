@@ -1096,28 +1096,104 @@ function AppInner() {
 
   // ══════════════════════════════════════════════════════════════════════════
   // LEADERBOARD
-  const Leaderboard = () => (
-    <div className="fade-up">
-      <LeaderboardTable
-        players={sortedFlight("All")}
-        pars={pars}
-        scorecardUploads={scorecardUploads}
-        calcNet={calcNet}
-        calcGrossToPar={calcGrossToPar}
-        holesPlayed={holesPlayed}
-        toPM={toPM}
-        setSelectedPid={setSelectedPid}
-        setScreen={setScreen}
-      />
-      {players.length===0 && (
-        <div style={{textAlign:"center",padding:"60px 20px",color:"var(--text3)"}}>
-          <div style={{fontSize:36,marginBottom:12}}>⛳</div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,marginBottom:8}}>NO PLAYERS YET</div>
-          <div style={{fontSize:14}}>Share join code <strong style={{color:"var(--gold)"}}>{JOIN_CODE}</strong> with your group</div>
-        </div>
-      )}
-    </div>
-  );
+  const Leaderboard = () => {
+    const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
+    const oneOffPlayers = activeOneOff
+      ? (activeOneOff.hasPassword
+          ? players.filter(p => p.oneOffId === activeOneOff.id && p.scores?.some(Boolean))
+          : players.filter(p => p.scores?.some(Boolean)))
+      : [];
+    const oneOffRows = oneOffPlayers
+      .map(p => {
+        const gross = p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
+        let net = 0;
+        p.scores.forEach((s,i) => {
+          if (!s) return;
+          let str = 0;
+          if (HCP_S[i] <= p.handicap) str++;
+          if (p.handicap > 18 && HCP_S[i] <= p.handicap-18) str++;
+          net += s - str;
+        });
+        const thru = holesPlayed(p);
+        return { ...p, gross, net, thru };
+      })
+      .sort((a,b) => a.net - b.net);
+
+    return (
+      <div className="fade-up">
+        {/* ── One-Off Tournament Live Banner */}
+        {activeOneOff && (
+          <div style={{marginBottom:28}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",display:"inline-block",animation:"pulse2 1.2s infinite"}}/>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)"}}>LIVE NOW</span>
+              </div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:2,color:"var(--text)"}}>{activeOneOff.title}</div>
+              {activeOneOff.course && <div style={{fontSize:12,color:"var(--text3)"}}>📍 {activeOneOff.course}</div>}
+              {activeOneOff.hasPassword && <span style={{fontSize:10,color:"var(--text3)",fontFamily:"'Bebas Neue'",letterSpacing:1,border:"1px solid var(--border2)",borderRadius:2,padding:"1px 6px"}}>🔒 INVITE ONLY</span>}
+            </div>
+
+            {oneOffRows.length === 0 ? (
+              <div style={{padding:"24px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:6,textAlign:"center",color:"var(--text3)",fontSize:13,fontStyle:"italic"}}>
+                Waiting for players to enter scores…
+              </div>
+            ) : (
+              <div style={{background:"var(--bg2)",border:"1px solid var(--green-dim)",borderRadius:6,overflow:"hidden"}}>
+                <div style={{display:"grid",gridTemplateColumns:"52px 1fr 60px 80px 80px 60px",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
+                  <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span>
+                  <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>NET</span><span style={{textAlign:"center"}}>HCP</span>
+                </div>
+                {oneOffRows.map((p, idx) => (
+                  <div key={p.id} className="player-row"
+                    style={{display:"grid",gridTemplateColumns:"52px 1fr 60px 80px 80px 60px",padding:"12px 16px",alignItems:"center",
+                      borderLeft:idx===0?"3px solid var(--green)":"3px solid transparent"}}
+                    onClick={()=>{ setSelectedPid(p.id); setScreen("scorecard"); }}>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:20,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
+                      {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
+                    </span>
+                    <div>
+                      <div style={{fontSize:16,fontWeight:600,color:idx===0?"var(--text)":"var(--text2)"}}>{p.name}</div>
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:15,color:p.thru===18?"var(--green)":"var(--text)"}}>{p.thru===18?"F":p.thru||"—"}</div>
+                      <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1}}>{p.thru===18?"FINAL":p.thru>0?"THRU":"—"}</div>
+                    </div>
+                    <div style={{textAlign:"center",fontSize:16,color:p.gross>0?"var(--amber)":p.gross<0?"var(--gold)":"var(--text)"}}>{p.gross||"—"}</div>
+                    <div style={{textAlign:"center",fontSize:22,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{toPM(p.net)}</div>
+                    <div style={{textAlign:"center",fontSize:13,color:"var(--text3)"}}>{p.handicap}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{borderTop:"1px solid var(--border)",marginTop:24,paddingTop:20}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:12}}>── SEASON LEADERBOARD</div>
+            </div>
+          </div>
+        )}
+
+        <LeaderboardTable
+          players={sortedFlight("All")}
+          pars={pars}
+          scorecardUploads={scorecardUploads}
+          calcNet={calcNet}
+          calcGrossToPar={calcGrossToPar}
+          holesPlayed={holesPlayed}
+          toPM={toPM}
+          setSelectedPid={setSelectedPid}
+          setScreen={setScreen}
+        />
+        {players.length===0 && (
+          <div style={{textAlign:"center",padding:"60px 20px",color:"var(--text3)"}}>
+            <div style={{fontSize:36,marginBottom:12}}>⛳</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,marginBottom:8}}>NO PLAYERS YET</div>
+            <div style={{fontSize:14}}>Share join code <strong style={{color:"var(--gold)"}}>{JOIN_CODE}</strong> with your group</div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // ══════════════════════════════════════════════════════════════════════════
   // SCORECARD VIEW
