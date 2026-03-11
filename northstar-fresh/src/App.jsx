@@ -1783,7 +1783,7 @@ function AppInner() {
                 <div style={{marginTop:16,padding:"12px 16px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:4}}>
                   <div className="section-label" style={{color:"var(--green)",marginBottom:6}}>🟢 TOURNAMENT IN PROGRESS: {activeOneOff.title}</div>
                   <div style={{fontSize:12,color:"var(--text3)",marginBottom:8}}>Have a tournament password? Enter it to join the leaderboard.</div>
-                  <input value={regForm.tourneyPw} onChange={e=>setRegForm(f=>({...f,tourneyPw:e.target.value}))}
+                  <input defaultValue={regForm.tourneyPw} onBlur={e=>setRegForm(f=>({...f,tourneyPw:e.target.value}))}
                     placeholder="Tournament password" style={{width:"100%",fontSize:14}}/>
                 </div>
               )}
