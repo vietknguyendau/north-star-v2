@@ -239,18 +239,24 @@ function OneOffCreator({ players, notify }) {
 
   const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
 
+  const [password, setPassword] = React.useState("");
+
   const startTournament = async () => {
     if (!title.trim()) { notify("Enter a title before starting.", "error"); return; }
     if (!window.confirm(`Start "${title.trim()}"? This will clear all player scores so everyone starts fresh.`)) return;
     setStarting(true);
-    // Clear all player scores
+    const pwHash = password.trim() ? await hashPin(password.trim()) : null;
+    // Clear all player scores and remove any existing oneOffId tags
     for (const p of players) {
-      await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",p.id), { scores: Array(18).fill(null) });
+      await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",p.id), { scores: Array(18).fill(null), oneOffId: null });
     }
-    // Save active one-off state
+    const oneOffId = `oneoff-${Date.now()}`;
+    // Save active one-off state with id so players can be tagged
     await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), {
+      id: oneOffId,
       title: title.trim(), date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
       course: course.trim(), notes: notes.trim(), startedAt: Date.now(),
+      pwHash, hasPassword: !!password.trim(),
     });
     setStarting(false);
     notify(`"${title.trim()}" started! All scores cleared. Players can now enter scores. 🏌️`);
@@ -260,8 +266,11 @@ function OneOffCreator({ players, notify }) {
     const t = active || { title: title.trim(), date: date, course: course.trim(), notes: notes.trim() };
     if (!t.title) { notify("No active tournament to lock.", "error"); return; }
     setSaving(true);
-    const snap = players
-      .filter(p => p.scores && p.scores.some(Boolean))
+    // Only snapshot players tagged to this tournament (if password protected), otherwise all with scores
+    const eligible = t.id
+      ? players.filter(p => p.scores?.some(Boolean) && (!t.hasPassword || p.oneOffId === t.id))
+      : players.filter(p => p.scores?.some(Boolean));
+    const snap = eligible
       .map(p => {
         const gross = p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
         let net = 0;
@@ -348,6 +357,11 @@ function OneOffCreator({ players, notify }) {
             <div style={{gridColumn:"1/-1"}}>
               <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>NOTES (optional)</div>
               <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. Scramble format, $10/player" style={{width:"100%"}}/>
+            </div>
+            <div style={{gridColumn:"1/-1"}}>
+              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>TOURNAMENT PASSWORD (optional)</div>
+              <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="e.g. eagles2026 — share with players to join" style={{width:"100%"}}/>
+              <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Players enter this on Login or Register to join this tournament's leaderboard.</div>
             </div>
           </div>
           <button className="btn-gold" style={{fontSize:14,padding:"12px 28px"}} onClick={startTournament} disabled={starting||!title.trim()}>
@@ -858,7 +872,8 @@ function AppInner() {
   const [players, setPlayers]   = useState([]);
   const [course, setCourse]     = useState(null);
   const [scorecardUploads, setScorecardUploads] = useState({});
-  const [ctpBets, setCtpBets] = useState({});      // { holeIndex: { entries: {playerId: {feet,inches,lockedIn}}, active } }
+  const [ctpBets, setCtpBets] = useState({});      // { holeIndex: { entries: {playerId: {feet,inche
+  const [activeOneOff, setActiveOneOff] = useState(null); // active one-off tournaments,lockedIn}}, active } }
   const [moreOpen, setMoreOpen] = useState(false); // { playerId: { url, verified, uploadedAt } }
   const [loading, setLoading]   = useState(true);
   const [syncStatus, setSyncStatus] = useState("synced"); // synced | syncing | error
@@ -940,7 +955,12 @@ function AppInner() {
       }
     );
 
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
+    const unsub5 = onSnapshot(
+      doc(db, "tournaments", TOURNAMENT_ID, "settings", "active_oneoff"),
+      snap => { setActiveOneOff(snap.exists() ? snap.data() : null); }
+    );
+
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); };
   }, []);
 
   const notify = (msg, type="success") => {
@@ -1034,13 +1054,20 @@ function AppInner() {
     if (players.find(p=>p.name.toLowerCase()===regForm.name.trim().toLowerCase())) { setRegError("Name already registered."); return; }
     if (!regForm.pin || regForm.pin.length !== 4 || !/^\d{4}$/.test(regForm.pin)) { setRegError("Please set a 4-digit PIN."); return; }
     if (regForm.pin !== regForm.pin2) { setRegError("PINs do not match."); return; }
+    // Check tournament password
+    let oneOffId = null;
+    if (regForm.tourneyPw && activeOneOff?.hasPassword) {
+      const pwHash = await hashPin(regForm.tourneyPw.trim());
+      if (pwHash === activeOneOff.pwHash) { oneOffId = activeOneOff.id; }
+      else { setRegError("Incorrect tournament password."); return; }
+    }
     const id  = `player-${Date.now()}`;
     const pinHash = await hashPin(regForm.pin);
-    const np  = { id, name:regForm.name.trim(), email:regForm.email.trim().toLowerCase(), handicap:parseInt(regForm.handicap)||0, flight:regForm.flight, scores:Array(18).fill(null), pinHash };
+    const np  = { id, name:regForm.name.trim(), email:regForm.email.trim().toLowerCase(), handicap:parseInt(regForm.handicap)||0, flight:regForm.flight, scores:Array(18).fill(null), pinHash, ...(oneOffId?{oneOffId}:{}) };
     await savePlayer(np);
     setActivePlayer(np.id);
     setRegSuccess(true);
-    notify(`Welcome, ${np.name}! 🏌️`);
+    notify(oneOffId ? `Welcome, ${np.name}! You've joined "${activeOneOff.title}" 🏌️` : `Welcome, ${np.name}! 🏌️`);
   };
 
   const handleFileUpload = e => {
@@ -1329,6 +1356,17 @@ function AppInner() {
                 </div>
               </div>
               <div style={{fontSize:12,color:"var(--text3)",fontStyle:"italic"}}>🔒 Your PIN protects your scorecard. Only you (and the commissioner) can edit your scores.</div>
+
+              {/* Tournament password — only show if a one-off is active with a password */}
+              {activeOneOff?.hasPassword && (
+                <div style={{marginTop:16,padding:"12px 16px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:4}}>
+                  <div className="section-label" style={{color:"var(--green)",marginBottom:6}}>🟢 TOURNAMENT IN PROGRESS: {activeOneOff.title}</div>
+                  <div style={{fontSize:12,color:"var(--text3)",marginBottom:8}}>Have a tournament password? Enter it to join the leaderboard.</div>
+                  <input value={regForm.tourneyPw} onChange={e=>setRegForm(f=>({...f,tourneyPw:e.target.value}))}
+                    placeholder="Tournament password" style={{width:"100%",fontSize:14}}/>
+                </div>
+              )}
+
               {regError && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"10px 14px",borderRadius:4}}>{regError}</div>}
               <button className="btn-gold" style={{width:"100%",padding:13,fontSize:15,marginTop:4}} onClick={handleRegister}>REGISTER &amp; JOIN →</button>
             </div>
@@ -1359,6 +1397,8 @@ function AppInner() {
 
     const selectedPlayer = players.find(p=>p.id===loginPid);
 
+    const [tourneyPw, setTourneyPw] = React.useState("");
+
     const handleLogin = async () => {
       if (!selectedPlayer) { setLoginErr("Select your name."); return; }
       setLogging(true);
@@ -1370,6 +1410,18 @@ function AppInner() {
       }
       const hash = await hashPin(loginPin);
       if (hash === selectedPlayer.pinHash) {
+        // Check tournament password if one-off is active
+        if (tourneyPw.trim() && activeOneOff?.hasPassword) {
+          const pwHash = await hashPin(tourneyPw.trim());
+          if (pwHash === activeOneOff.pwHash) {
+            await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",selectedPlayer.id),{oneOffId:activeOneOff.id});
+            notify(`Joined "${activeOneOff.title}"! 🏌️`);
+          } else {
+            setLoginErr("Incorrect tournament password.");
+            setLogging(false);
+            return;
+          }
+        }
         setActivePlayer(selectedPlayer.id);
         setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
         setScreen("my-scores");
@@ -1420,6 +1472,16 @@ function AppInner() {
                   ))}
                 </div>
               </div>
+              {/* Tournament password if one-off active */}
+              {activeOneOff?.hasPassword && (
+                <div style={{marginBottom:14,padding:"12px 14px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:4}}>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"var(--green)",marginBottom:6}}>🟢 {activeOneOff.title} IN PROGRESS</div>
+                  <div style={{fontSize:12,color:"var(--text3)",marginBottom:6}}>Enter tournament password to join the leaderboard:</div>
+                  <input value={tourneyPw} onChange={e=>setTourneyPw(e.target.value)}
+                    placeholder="Tournament password" style={{width:"100%",fontSize:14}}/>
+                </div>
+              )}
+
               {loginErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{loginErr}</div>}
               <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}} onClick={handleLogin} disabled={logging||loginPin.length!==4}>
                 {logging?"...":"LOG IN & ENTER SCORES →"}

@@ -406,16 +406,68 @@ export default function TournamentHistory({ players, adminUnlocked }) {
           <div className="hist-label">── ONE-OFF TOURNAMENTS</div>
 
           {/* Active tournament in-progress banner */}
-          {activeOneOff && (
-            <div style={{padding:"16px 20px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:6,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-              <div>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:4}}>🟢 IN PROGRESS — LIVE</div>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:2,color:"var(--text)"}}>{activeOneOff.title}</div>
-                <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{activeOneOff.date}{activeOneOff.course?` · ${activeOneOff.course}`:""}</div>
+          {activeOneOff && (() => {
+            const joinedPlayers = activeOneOff.hasPassword
+              ? players.filter(p => p.oneOffId === activeOneOff.id && p.scores?.some(Boolean))
+              : players.filter(p => p.scores?.some(Boolean));
+            return (
+              <div style={{marginBottom:16}}>
+                <div style={{padding:"16px 20px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:6,marginBottom:joinedPlayers.length?8:0}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+                    <div>
+                      <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:4}}>🟢 IN PROGRESS — LIVE</div>
+                      <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:2,color:"var(--text)"}}>{activeOneOff.title}</div>
+                      <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{activeOneOff.date}{activeOneOff.course?` · ${activeOneOff.course}`:""}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"var(--green)"}}>{joinedPlayers.length}</div>
+                      <div style={{fontSize:9,color:"var(--text3)",letterSpacing:2,fontFamily:"'Bebas Neue'"}}>PLAYERS IN</div>
+                      {activeOneOff.hasPassword && <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>🔒 Password protected</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live leaderboard for in-progress tournament */}
+                {joinedPlayers.length > 0 && (
+                  <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:6,overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"44px 1fr 70px 70px",background:"var(--bg3)",padding:"8px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
+                      <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>NET</span>
+                    </div>
+                    {[...joinedPlayers]
+                      .map(p => {
+                        const gross = p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
+                        let net = 0;
+                        const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
+                        p.scores.forEach((s,i) => {
+                          if (!s) return;
+                          let str = 0;
+                          if (HCP_S[i] <= p.handicap) str++;
+                          if (p.handicap > 18 && HCP_S[i] <= p.handicap-18) str++;
+                          net += s - str;
+                        });
+                        return { ...p, gross, net };
+                      })
+                      .sort((a,b) => a.net - b.net)
+                      .map((p, idx) => (
+                        <div key={p.id} style={{display:"grid",gridTemplateColumns:"44px 1fr 70px 70px",padding:"10px 16px",borderBottom:"1px solid var(--border)",
+                          borderLeft:idx===0?"3px solid var(--green)":"3px solid transparent"}}>
+                          <span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
+                            {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
+                          </span>
+                          <div>
+                            <div style={{fontSize:15,fontWeight:600,color:"var(--text2)"}}>{p.name}</div>
+                            <div style={{fontSize:10,color:"var(--text3)"}}>HCP {p.handicap} · Thru {p.scores.filter(Boolean).length}</div>
+                          </div>
+                          <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,color:"var(--text3)"}}>{p.gross||"—"}</div>
+                          <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,fontWeight:700,color:idx===0?"var(--green)":"var(--text)"}}>{p.net||"—"}</div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
-              <div style={{fontSize:13,color:"var(--text3)",fontStyle:"italic"}}>Scores update live. Admin locks results when done.</div>
-            </div>
-          )}
+            );
+          })()}
 
           {oneOffTourneys.length === 0 && !activeOneOff ? (
             <div className="hist-card" style={{padding:"48px 32px",textAlign:"center",marginBottom:24}}>
