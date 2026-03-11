@@ -1055,7 +1055,7 @@ function AppInner() {
     const player = players.find(p=>p.id===pid);
     if (!player) return;
     const scores = [...player.scores];
-    scores[hole] = val === "" ? null : Math.max(1, parseInt(val)||1);
+    scores[hole] = val === "" ? null : Math.min(10, Math.max(1, parseInt(val)||1));
     const updated = { ...player, scores };
     // Optimistic local update
     setPlayers(prev => prev.map(p => p.id===pid ? updated : p));
@@ -1489,17 +1489,18 @@ function AppInner() {
   // ══════════════════════════════════════════════════════════════════════════
   // QUICK LOGIN — select player + PIN → goes straight to My Scores
   const LoginView = () => {
+    const [step, setStep]           = React.useState("name");   // name | pin | tournament
     const [loginPid, setLoginPid]   = React.useState("");
     const [loginPin, setLoginPin]   = React.useState("");
     const [loginErr, setLoginErr]   = React.useState("");
     const [logging,  setLogging]    = React.useState(false);
+    const [tourneyPw, setTourneyPw] = React.useState("");
+    const [pwErr, setPwErr]         = React.useState("");
 
     const selectedPlayer = players.find(p=>p.id===loginPid);
 
-    const [tourneyPw, setTourneyPw] = React.useState("");
-
-    const handleLogin = async () => {
-      if (!selectedPlayer) { setLoginErr("Select your name."); return; }
+    const handlePinSubmit = async () => {
+      if (!selectedPlayer) return;
       setLogging(true);
       if (loginPin === ADMIN_PIN) {
         setActivePlayer(selectedPlayer.id);
@@ -1509,26 +1510,36 @@ function AppInner() {
       }
       const hash = await hashPin(loginPin);
       if (hash === selectedPlayer.pinHash) {
-        // Check tournament password if one-off is active
-        if (tourneyPw.trim() && activeOneOff?.hasPassword) {
-          const pwHash = await hashPin(tourneyPw.trim());
-          if (pwHash === activeOneOff.pwHash) {
-            await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",selectedPlayer.id),{oneOffId:activeOneOff.id});
-            notify(`Joined "${activeOneOff.title}"! 🏌️`);
-          } else {
-            setLoginErr("Incorrect tournament password.");
-            setLogging(false);
-            return;
-          }
+        setLogging(false);
+        // If a one-off is active, show tournament picker; otherwise go straight in
+        if (activeOneOff) { setStep("tournament"); }
+        else {
+          setActivePlayer(selectedPlayer.id);
+          setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
+          setScreen("my-scores");
         }
-        setActivePlayer(selectedPlayer.id);
-        setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
-        setScreen("my-scores");
       } else {
         setLoginErr("Incorrect PIN. Try again or ask the commissioner.");
         setLogging(false);
         setLoginPin("");
       }
+    };
+
+    const handleTournamentSelect = async (joinOneOff) => {
+      if (joinOneOff && activeOneOff?.hasPassword) {
+        // Needs password
+        if (!tourneyPw.trim()) { setPwErr("Enter the tournament password."); return; }
+        const pwHash = await hashPin(tourneyPw.trim());
+        if (pwHash !== activeOneOff.pwHash) { setPwErr("Incorrect password."); return; }
+        await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",selectedPlayer.id),{oneOffId:activeOneOff.id});
+        notify(`Joined "${activeOneOff.title}"! 🏌️`);
+      } else if (joinOneOff && activeOneOff && !activeOneOff.hasPassword) {
+        await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",selectedPlayer.id),{oneOffId:activeOneOff.id});
+        notify(`Joined "${activeOneOff.title}"! 🏌️`);
+      }
+      setActivePlayer(selectedPlayer.id);
+      setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
+      setScreen("my-scores");
     };
 
     return (
@@ -1538,56 +1549,99 @@ function AppInner() {
           <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>PLAYER LOGIN</h2>
           <p style={{fontSize:14,color:"var(--text2)",marginTop:8}}>Select your name and enter your PIN to access your scorecard.</p>
         </div>
-        <div className="card" style={{padding:28}}>
-          <div style={{marginBottom:16}}>
-            <div className="section-label" style={{marginBottom:6}}>YOUR NAME</div>
-            <select value={loginPid} onChange={e=>{setLoginPid(e.target.value);setLoginErr("");setLoginPin("");}}
-              style={{width:"100%",padding:"10px 12px",fontSize:15,background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:loginPid?"var(--text)":"var(--text3)"}}>
+
+        {/* ── STEP 1: Name */}
+        {step === "name" && (
+          <div className="card" style={{padding:28}}>
+            <div className="section-label" style={{marginBottom:8}}>YOUR NAME</div>
+            <select value={loginPid} onChange={e=>{setLoginPid(e.target.value);setLoginErr("");}}
+              style={{width:"100%",padding:"10px 12px",fontSize:15,background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:loginPid?"var(--text)":"var(--text3)",marginBottom:20}}>
               <option value="">Select your name...</option>
               {players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
+            <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
+              disabled={!loginPid} onClick={()=>setStep("pin")}>
+              CONTINUE →
+            </button>
           </div>
+        )}
 
-          {loginPid && (
-            <>
-              <div style={{marginBottom:20}}>
-                <div className="section-label" style={{marginBottom:8}}>YOUR PIN</div>
-                <div style={{display:"flex",justifyContent:"center",gap:10,marginBottom:14}}>
-                  {[0,1,2,3].map(i=>(
-                    <div key={i} style={{width:48,height:56,border:"2px solid "+(loginPin.length>i?"var(--gold)":"var(--border2)"),borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,background:"var(--bg3)",color:"var(--gold)",transition:"all .15s"}}>
-                      {loginPin.length>i?"●":""}
-                    </div>
-                  ))}
+        {/* ── STEP 2: PIN */}
+        {step === "pin" && (
+          <div className="card" style={{padding:28}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+              <button onClick={()=>{setStep("name");setLoginPin("");setLoginErr("");}}
+                style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer",padding:"0 4px"}}>←</button>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
+            </div>
+            <div className="section-label" style={{marginBottom:8}}>YOUR PIN</div>
+            <div style={{display:"flex",justifyContent:"center",gap:10,marginBottom:16}}>
+              {[0,1,2,3].map(i=>(
+                <div key={i} style={{width:48,height:56,border:"2px solid "+(loginPin.length>i?"var(--gold)":"var(--border2)"),borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,background:"var(--bg3)",color:"var(--gold)",transition:"all .15s"}}>
+                  {loginPin.length>i?"●":""}
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
-                  {[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map((k,i)=>(
-                    <button key={i} onClick={()=>{
-                      if(k==="⌫") setLoginPin(p=>p.slice(0,-1));
-                      else if(k===""||loginPin.length>=4) return;
-                      else { setLoginPin(p=>p+k); setLoginErr(""); }
-                    }} style={{padding:"15px 8px",fontFamily:"'DM Mono'",fontSize:20,background:k==="⌫"?"var(--bg3)":"var(--bg4)",border:"1px solid var(--border2)",borderRadius:6,color:k==="⌫"?"var(--red)":"var(--text)",cursor:k===""?"default":"pointer",opacity:k===""?0:1}}>
-                      {k}
-                    </button>
-                  ))}
-                </div>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+              {[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map((k,i)=>(
+                <button key={i} onClick={()=>{
+                  if(k==="⌫") setLoginPin(p=>p.slice(0,-1));
+                  else if(k===""||loginPin.length>=4) return;
+                  else { setLoginPin(p=>p+k); setLoginErr(""); }
+                }} style={{padding:"15px 8px",fontFamily:"'DM Mono'",fontSize:20,background:k==="⌫"?"var(--bg3)":"var(--bg4)",border:"1px solid var(--border2)",borderRadius:6,color:k==="⌫"?"var(--red)":"var(--text)",cursor:k===""?"default":"pointer",opacity:k===""?0:1}}>
+                  {k}
+                </button>
+              ))}
+            </div>
+            {loginErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{loginErr}</div>}
+            <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
+              onClick={handlePinSubmit} disabled={logging||loginPin.length!==4}>
+              {logging?"...":"VERIFY PIN →"}
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP 3: Tournament picker */}
+        {step === "tournament" && activeOneOff && (
+          <div className="card" style={{padding:28}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+              <button onClick={()=>{setStep("pin");setLoginPin("");setTourneyPw("");setPwErr("");}}
+                style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer",padding:"0 4px"}}>←</button>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
+            </div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:3,color:"var(--text3)",marginBottom:16}}>SELECT YOUR ROUND</div>
+
+            {/* Season round option */}
+            <button onClick={()=>handleTournamentSelect(false)}
+              style={{width:"100%",marginBottom:10,padding:"16px 20px",background:"var(--bg3)",border:"2px solid var(--border2)",borderRadius:8,cursor:"pointer",textAlign:"left",transition:"border .15s"}}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="var(--gold)"}
+              onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border2)"}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,color:"var(--gold)",marginBottom:2}}>🏆 SEASON ROUND</div>
+              <div style={{fontSize:12,color:"var(--text3)"}}>North Star Amateur Series · Regular event</div>
+            </button>
+
+            {/* One-off option */}
+            <div style={{padding:"16px 20px",background:"#0a1a0a",border:"2px solid var(--green-dim)",borderRadius:8}}>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,color:"var(--green)",marginBottom:2}}>🟢 {activeOneOff.title}</div>
+              <div style={{fontSize:12,color:"var(--text3)",marginBottom:activeOneOff.hasPassword?12:16}}>
+                {activeOneOff.date}{activeOneOff.course?` · ${activeOneOff.course}`:""}
+                {selectedPlayer?.oneOffId === activeOneOff.id && <span style={{color:"var(--green)",marginLeft:8}}>✓ Already joined</span>}
               </div>
-              {/* Tournament password if one-off active */}
-              {activeOneOff?.hasPassword && (
-                <div style={{marginBottom:14,padding:"12px 14px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:4}}>
-                  <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"var(--green)",marginBottom:6}}>🟢 {activeOneOff.title} IN PROGRESS</div>
-                  <div style={{fontSize:12,color:"var(--text3)",marginBottom:6}}>Enter tournament password to join the leaderboard:</div>
-                  <input value={tourneyPw} onChange={e=>setTourneyPw(e.target.value)}
-                    placeholder="Tournament password" style={{width:"100%",fontSize:14}}/>
+              {activeOneOff.hasPassword && selectedPlayer?.oneOffId !== activeOneOff.id && (
+                <div style={{marginBottom:12}}>
+                  <input value={tourneyPw} onChange={e=>{setTourneyPw(e.target.value);setPwErr("");}}
+                    placeholder="Tournament password" style={{width:"100%",fontSize:14,marginBottom:4}}/>
+                  {pwErr && <div style={{fontSize:12,color:"var(--red)"}}>{pwErr}</div>}
                 </div>
               )}
-
-              {loginErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{loginErr}</div>}
-              <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}} onClick={handleLogin} disabled={logging||loginPin.length!==4}>
-                {logging?"...":"LOG IN & ENTER SCORES →"}
+              <button onClick={()=>handleTournamentSelect(true)}
+                style={{width:"100%",padding:"12px",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,background:"var(--green)",color:"#060a06",border:"none",borderRadius:6,cursor:"pointer"}}>
+                {selectedPlayer?.oneOffId === activeOneOff.id ? "ENTER SCORES →" : "JOIN & ENTER SCORES →"}
               </button>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
+
         <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"var(--text3)"}}>
           New player? <span style={{color:"var(--gold)",cursor:"pointer"}} onClick={()=>setScreen("register")}>Register here →</span>
         </div>
@@ -1789,7 +1843,7 @@ function AppInner() {
           {/* Score buttons — par-relative, auto-advance on tap */}
           {(()=>{
             const scores = [];
-            for (let n = Math.max(1, par-3); n <= par+4; n++) scores.push(n);
+            for (let n = Math.max(1, par-3); n <= Math.min(10, Math.max(par+4, 10)); n++) scores.push(n);
             const labelFor = (n) => {
               const d = n - par;
               if (d <= -3) return "ALBATROSS";
