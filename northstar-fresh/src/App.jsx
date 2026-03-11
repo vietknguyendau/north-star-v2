@@ -848,7 +848,7 @@ function AppInner() {
     const updated = { ...player, scores };
     // Optimistic local update
     setPlayers(prev => prev.map(p => p.id===pid ? updated : p));
-    if (activePlayer?.id === pid) setActivePlayer(updated);
+    if (activePlayer === pid) setActivePlayer(pid);
     await savePlayer(updated);
   };
 
@@ -870,7 +870,7 @@ function AppInner() {
     const pinHash = await hashPin(regForm.pin);
     const np  = { id, name:regForm.name.trim(), email:regForm.email.trim().toLowerCase(), handicap:parseInt(regForm.handicap)||0, flight:regForm.flight, scores:Array(18).fill(null), pinHash };
     await savePlayer(np);
-    setActivePlayer(np);
+    setActivePlayer(np.id);
     setRegSuccess(true);
     notify(`Welcome, ${np.name}! 🏌️`);
   };
@@ -1195,14 +1195,14 @@ function AppInner() {
       if (!selectedPlayer) { setLoginErr("Select your name."); return; }
       setLogging(true);
       if (loginPin === ADMIN_PIN) {
-        setActivePlayer(selectedPlayer);
+        setActivePlayer(selectedPlayer.id);
         setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
         setScreen("my-scores");
         return;
       }
       const hash = await hashPin(loginPin);
       if (hash === selectedPlayer.pinHash) {
-        setActivePlayer(selectedPlayer);
+        setActivePlayer(selectedPlayer.id);
         setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
         setScreen("my-scores");
       } else {
@@ -1274,7 +1274,7 @@ function AppInner() {
       if (attempts >= 5) { setScorePinError("Too many attempts. Ask the commissioner to reset your PIN."); return; }
       // Admin override — admin PIN bypasses player PIN
       if (scorePin === ADMIN_PIN) {
-        setActivePlayer(pendingPlayer);
+        setActivePlayer(pendingPlayer.id);
         setActiveHole(Math.max(0, holesPlayed(pendingPlayer)-1)||0);
         setScreen("my-scores");
         setScorePin(""); setScorePinError(""); setPendingPlayer(null);
@@ -1282,7 +1282,7 @@ function AppInner() {
       }
       const hash = await hashPin(scorePin);
       if (hash === pendingPlayer.pinHash) {
-        setActivePlayer(pendingPlayer);
+        setActivePlayer(pendingPlayer.id);
         setActiveHole(Math.max(0, holesPlayed(pendingPlayer)-1)||0);
         setScreen("my-scores");
         setPinAttempts(prev => ({ ...prev, [pendingPlayer.id]: 0 }));
@@ -1354,7 +1354,7 @@ function AppInner() {
   // MY SCORES — mobile entry
   const MyScores = () => {
     if (!activePlayer) { setScreen("my-scores-login"); return null; }
-    const player = players.find(p=>p.id===activePlayer.id);
+    const player = players.find(p=>p.id===activePlayer);
     if (!player) { setScreen("my-scores-login"); return null; }
     // Extra guard: activePlayer must match a real player and must have authenticated via PIN
     // (activePlayer is only set after successful PIN entry in MyScoresLogin)
@@ -1640,7 +1640,7 @@ function AppInner() {
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
               <button className="btn-ghost btn-sm" onClick={()=>{ setRegSuccess(false); setRegError(""); setScreen("register"); }}>JOIN / REGISTER</button>
               <button className="btn-gold btn-sm" style={{display:"flex",alignItems:"center",gap:6}} onClick={()=>setScreen(activePlayer?"my-scores":"my-scores-login")}>
-                {activePlayer ? <><span style={{fontSize:10,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activePlayer.name?.split(" ")[0]?.toUpperCase()}</span><span>✏️</span></> : <>✏️ LOG IN</>}
+                {activePlayer ? <><span style={{fontSize:10,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{players.find(p=>p.id===activePlayer)?.name?.split(" ")[0]?.toUpperCase()}</span><span> ✏️</span></> : <>✏️ LOG IN</>}
               </button>
             </div>
           </div>
