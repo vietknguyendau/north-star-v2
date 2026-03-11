@@ -213,6 +213,116 @@ function PinResetButton({ player, notify }) {
   );
 }
 
+
+// ── One-Off Tournament Creator (used inside AdminView)
+function OneOffCreator({ players, notify }) {
+  const [title,   setTitle]   = React.useState("");
+  const [date,    setDate]    = React.useState("");
+  const [course,  setCourse2] = React.useState("");
+  const [notes,   setNotes]   = React.useState("");
+  const [saving,  setSaving]  = React.useState(false);
+  const [tourneys,setTourneys]= React.useState([]);
+
+  React.useEffect(() => {
+    const unsub = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments"), snap => {
+      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      arr.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+      setTourneys(arr);
+    });
+    return () => unsub();
+  }, []);
+
+  const create = async () => {
+    if (!title.trim()) { notify("Enter a tournament title.", "error"); return; }
+    setSaving(true);
+    // Snapshot current player scores sorted by net score
+    const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
+    const snap = players
+      .filter(p => p.scores && p.scores.some(Boolean))
+      .map(p => {
+        const gross = p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
+        let net = 0;
+        p.scores.forEach((s,i) => {
+          if (!s) return;
+          let strokes = 0;
+          if (HCP_S[i] <= p.handicap) strokes++;
+          if (p.handicap > 18 && HCP_S[i] <= p.handicap-18) strokes++;
+          net += s - strokes;
+        });
+        return { id:p.id, name:p.name, handicap:p.handicap, flight:p.flight, gross, net, scores:[...p.scores] };
+      })
+      .sort((a,b) => a.net - b.net);
+
+    const id = `oneoff-${Date.now()}`;
+    await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",id), {
+      id, title: title.trim(),
+      date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+      course: course.trim(),
+      notes: notes.trim(),
+      snapshot: snap,
+      createdAt: Date.now(),
+    });
+    setTitle(""); setDate(""); setCourse2(""); setNotes("");
+    setSaving(false);
+    notify(`"${title.trim()}" saved! View it in the History tab. 🏆`);
+  };
+
+  const remove = async (id, name) => {
+    if (!window.confirm(`Delete "${name}"?`)) return;
+    await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",id));
+    notify("Tournament deleted.");
+  };
+
+  return (
+    <div>
+      <div className="card" style={{padding:20,marginBottom:16}}>
+        <div style={{fontSize:13,color:"var(--text3)",marginBottom:14,lineHeight:1.6}}>
+          Creates a permanent snapshot of the current leaderboard as a standalone tournament. Use this for charity rounds, scrambles, skins games, or any event outside the regular season.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>TOURNAMENT TITLE *</div>
+            <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Charity Scramble · July 4th" style={{width:"100%",fontSize:15,padding:"9px 12px"}}/>
+          </div>
+          <div>
+            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>DATE</div>
+            <input value={date} onChange={e=>setDate(e.target.value)} placeholder="e.g. July 4, 2026" style={{width:"100%"}}/>
+          </div>
+          <div>
+            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>COURSE</div>
+            <input value={course} onChange={e=>setCourse2(e.target.value)} placeholder="e.g. Rum River Hills" style={{width:"100%"}}/>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>NOTES (optional)</div>
+            <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. Skins format, $5/hole" style={{width:"100%"}}/>
+          </div>
+        </div>
+        <div style={{fontSize:11,color:"var(--amber)",marginBottom:12}}>
+          ⚡ Snapshots {players.filter(p=>p.scores?.some(Boolean)).length} players with active scores
+        </div>
+        <button className="btn-gold" style={{fontSize:13}} onClick={create} disabled={saving||!title.trim()}>
+          {saving?"SAVING…":"📸 LOCK IN & SAVE TOURNAMENT"}
+        </button>
+      </div>
+
+      {tourneys.length > 0 && (
+        <div>
+          <div style={{fontSize:10,color:"var(--text3)",letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:8}}>SAVED ONE-OFF TOURNAMENTS</div>
+          {tourneys.map(t=>(
+            <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,marginBottom:6}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:600,color:"var(--text)"}}>{t.title}</div>
+                <div style={{fontSize:11,color:"var(--text3)"}}>{t.date}{t.course?` · ${t.course}`:""} · {(t.snapshot||[]).length} players</div>
+              </div>
+              <button className="btn-danger" style={{fontSize:10,padding:"4px 10px"}} onClick={()=>remove(t.id,t.title)}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput, setPinInput,
   pinError, setPinError, savePlayer, removePlayerDb, saveCourse, setCourse, updateField, notify,
   scorecardUploads }) {
@@ -419,6 +529,12 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
           await savePlayer(np);
           notify("Player added.");
         }}>+ ADD PLAYER</button>
+
+        {/* ── One-Off Tournament Creator */}
+        <div style={{marginTop:32}}>
+          <div className="section-label">── ONE-OFF TOURNAMENTS</div>
+          <OneOffCreator players={players} notify={notify} />
+        </div>
       </div>
     );
   
@@ -1687,7 +1803,7 @@ function AppInner() {
         {screen==="register"        && <RegisterView/>}
         {(screen==="login"||screen==="my-scores-login") && <LoginView/>}
         {screen==="my-scores"       && <MyScores/>}
-        {screen==="history" && <TournamentHistory players={players} />}
+        {screen==="history" && <TournamentHistory players={players} adminUnlocked={adminUnlocked} />}
         {screen==="rules" && <RulesPage adminUnlocked={adminUnlocked} />}
         {screen==="sidebets" && (
           <Sidebets
