@@ -191,6 +191,7 @@ export const WI_COURSES = [
   { name:"Ironwood Golf Course", city:"Madison, WI", slope:116, rating:68.2, par:71 },
 
   // ── Western Wisconsin (St. Croix / Hudson area — close to Twin Cities)
+  { name:"White Eagle Golf Club", city:"Hudson, WI", slope:140, rating:74.7, par:72 },
   { name:"Hudson Golf Club", city:"Hudson, WI", slope:126, rating:70.6, par:72 },
   { name:"Clifton Highlands Golf Course", city:"Prescott, WI", slope:130, rating:71.4, par:72 },
   { name:"Kilkarney Hills Golf Club", city:"River Falls, WI", slope:124, rating:70.0, par:72 },
