@@ -124,31 +124,7 @@ export const MN_COURSES = [
 ];
 
 // Combined course list — MN first, then WI
-export const ALL_COURSES = [...MN_COURSES, ...WI_COURSES];
 
-// Search function — returns top matches across MN + WI
-export const searchCourses = (query) => {
-  if (!query || query.length < 2) return [];
-  const q = query.toLowerCase();
-  return ALL_COURSES
-    .filter(c => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q))
-    .sort((a,b) => {
-      // Prioritize name matches over city matches
-      const aName = a.name.toLowerCase().indexOf(q);
-      const bName = b.name.toLowerCase().indexOf(q);
-      if (aName !== bName) return aName - bName;
-      // MN slightly before WI for same-quality matches
-      const aMN = a.city.includes(", WI") ? 1 : 0;
-      const bMN = b.city.includes(", WI") ? 1 : 0;
-      return aMN - bMN;
-    })
-    .slice(0, 10);
-};
-
-// ════════════════════════════════════════════════════════════════
-// Wisconsin Golf Course Database
-// Source: USGA NCRDB / WGA · Men's White/Blue tees
-// ════════════════════════════════════════════════════════════════
 export const WI_COURSES = [
   // ── Milwaukee Metro
   { name:"Brown Deer Park Golf Course", city:"Milwaukee, WI", slope:126, rating:70.8, par:72 },
@@ -254,3 +230,28 @@ export const WI_COURSES = [
   { name:"Drugan's Castle Mound", city:"Holmen, WI", slope:122, rating:69.6, par:72 },
   { name:"Pine Valley Golf Club", city:"Onalaska, WI", slope:126, rating:70.4, par:72 },
 ];
+
+export const ALL_COURSES = [...MN_COURSES, ...WI_COURSES];
+
+export const searchCourses = (query) => {
+  if (!query || query.length < 2) return [];
+  const q = query.toLowerCase();
+  return ALL_COURSES
+    .filter(c => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q))
+    .sort((a,b) => {
+      // Prioritize name matches over city matches
+      const aName = a.name.toLowerCase().indexOf(q);
+      const bName = b.name.toLowerCase().indexOf(q);
+      if (aName !== bName) return aName - bName;
+      // MN slightly before WI for same-quality matches
+      const aMN = a.city.includes(", WI") ? 1 : 0;
+      const bMN = b.city.includes(", WI") ? 1 : 0;
+      return aMN - bMN;
+    })
+    .slice(0, 10);
+};
+
+// ════════════════════════════════════════════════════════════════
+// Wisconsin Golf Course Database
+// Source: USGA NCRDB / WGA · Men's White/Blue tees
+// ════════════════════════════════════════════════════════════════
