@@ -1489,13 +1489,11 @@ function AppInner() {
   // ══════════════════════════════════════════════════════════════════════════
   // QUICK LOGIN — select player + PIN → goes straight to My Scores
   const LoginView = () => {
-    const [step, setStep]           = React.useState("name");   // name | pin | tournament
-    const [loginPid, setLoginPid]   = React.useState("");
-    const [loginPin, setLoginPin]   = React.useState("");
-    const [loginErr, setLoginErr]   = React.useState("");
-    const [logging,  setLogging]    = React.useState(false);
-    const [tourneyPw, setTourneyPw] = React.useState("");
-    const [pwErr, setPwErr]         = React.useState("");
+    const [step, setStep]         = React.useState("name"); // name | pin
+    const [loginPid, setLoginPid] = React.useState("");
+    const [loginPin, setLoginPin] = React.useState("");
+    const [loginErr, setLoginErr] = React.useState("");
+    const [logging,  setLogging]  = React.useState(false);
 
     const selectedPlayer = players.find(p=>p.id===loginPid);
 
@@ -1510,36 +1508,14 @@ function AppInner() {
       }
       const hash = await hashPin(loginPin);
       if (hash === selectedPlayer.pinHash) {
-        setLogging(false);
-        // If a one-off is active, show tournament picker; otherwise go straight in
-        if (activeOneOff) { setStep("tournament"); }
-        else {
-          setActivePlayer(selectedPlayer.id);
-          setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
-          setScreen("my-scores");
-        }
+        setActivePlayer(selectedPlayer.id);
+        setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
+        setScreen("my-scores");
       } else {
         setLoginErr("Incorrect PIN. Try again or ask the commissioner.");
         setLogging(false);
         setLoginPin("");
       }
-    };
-
-    const handleTournamentSelect = async (joinOneOff) => {
-      if (joinOneOff && activeOneOff?.hasPassword) {
-        // Needs password
-        if (!tourneyPw.trim()) { setPwErr("Enter the tournament password."); return; }
-        const pwHash = await hashPin(tourneyPw.trim());
-        if (pwHash !== activeOneOff.pwHash) { setPwErr("Incorrect password."); return; }
-        await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",selectedPlayer.id),{oneOffId:activeOneOff.id});
-        notify(`Joined "${activeOneOff.title}"! 🏌️`);
-      } else if (joinOneOff && activeOneOff && !activeOneOff.hasPassword) {
-        await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",selectedPlayer.id),{oneOffId:activeOneOff.id});
-        notify(`Joined "${activeOneOff.title}"! 🏌️`);
-      }
-      setActivePlayer(selectedPlayer.id);
-      setActiveHole(Math.max(0, holesPlayed(selectedPlayer)-1)||0);
-      setScreen("my-scores");
     };
 
     return (
@@ -1596,49 +1572,8 @@ function AppInner() {
             {loginErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{loginErr}</div>}
             <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
               onClick={handlePinSubmit} disabled={logging||loginPin.length!==4}>
-              {logging?"...":"VERIFY PIN →"}
+              {logging?"...":"LOG IN →"}
             </button>
-          </div>
-        )}
-
-        {/* ── STEP 3: Tournament picker */}
-        {step === "tournament" && activeOneOff && (
-          <div className="card" style={{padding:28}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-              <button onClick={()=>{setStep("pin");setLoginPin("");setTourneyPw("");setPwErr("");}}
-                style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer",padding:"0 4px"}}>←</button>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
-            </div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:3,color:"var(--text3)",marginBottom:16}}>SELECT YOUR ROUND</div>
-
-            {/* Season round option */}
-            <button onClick={()=>handleTournamentSelect(false)}
-              style={{width:"100%",marginBottom:10,padding:"16px 20px",background:"var(--bg3)",border:"2px solid var(--border2)",borderRadius:8,cursor:"pointer",textAlign:"left",transition:"border .15s"}}
-              onMouseEnter={e=>e.currentTarget.style.borderColor="var(--gold)"}
-              onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border2)"}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,color:"var(--gold)",marginBottom:2}}>🏆 SEASON ROUND</div>
-              <div style={{fontSize:12,color:"var(--text3)"}}>North Star Amateur Series · Regular event</div>
-            </button>
-
-            {/* One-off option */}
-            <div style={{padding:"16px 20px",background:"#0a1a0a",border:"2px solid var(--green-dim)",borderRadius:8}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,color:"var(--green)",marginBottom:2}}>🟢 {activeOneOff.title}</div>
-              <div style={{fontSize:12,color:"var(--text3)",marginBottom:activeOneOff.hasPassword?12:16}}>
-                {activeOneOff.date}{activeOneOff.course?` · ${activeOneOff.course}`:""}
-                {selectedPlayer?.oneOffId === activeOneOff.id && <span style={{color:"var(--green)",marginLeft:8}}>✓ Already joined</span>}
-              </div>
-              {activeOneOff.hasPassword && selectedPlayer?.oneOffId !== activeOneOff.id && (
-                <div style={{marginBottom:12}}>
-                  <input value={tourneyPw} onChange={e=>{setTourneyPw(e.target.value);setPwErr("");}}
-                    placeholder="Tournament password" style={{width:"100%",fontSize:14,marginBottom:4}}/>
-                  {pwErr && <div style={{fontSize:12,color:"var(--red)"}}>{pwErr}</div>}
-                </div>
-              )}
-              <button onClick={()=>handleTournamentSelect(true)}
-                style={{width:"100%",padding:"12px",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,background:"var(--green)",color:"#060a06",border:"none",borderRadius:6,cursor:"pointer"}}>
-                {selectedPlayer?.oneOffId === activeOneOff.id ? "ENTER SCORES →" : "JOIN & ENTER SCORES →"}
-              </button>
-            </div>
           </div>
         )}
 
@@ -2066,6 +2001,13 @@ function AppInner() {
               <button className="btn-gold btn-sm" style={{display:"flex",alignItems:"center",gap:6}} onClick={()=>setScreen(activePlayer?"my-scores":"my-scores-login")}>
                 {activePlayer ? <><span style={{fontSize:10,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{players.find(p=>p.id===activePlayer)?.name?.split(" ")[0]?.toUpperCase()}</span><span> ✏️</span></> : <>✏️ LOG IN</>}
               </button>
+              {activePlayer && (
+                <button className="btn-ghost btn-sm"
+                  style={{color:"var(--red)",borderColor:"#2a1010",fontSize:11}}
+                  onClick={()=>{ setActivePlayer(null); setScreen("leaderboard"); notify("Logged out. See you on the course! 🏌️"); }}>
+                  🔒 LOG OUT
+                </button>
+              )}
             </div>
           </div>
           <div style={{display:"flex",marginTop:12,overflowX:"auto",gap:0,scrollbarWidth:"none",msOverflowStyle:"none"}}>
