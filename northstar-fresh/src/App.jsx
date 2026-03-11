@@ -1160,6 +1160,8 @@ function AppInner() {
     const [tPwErr,    setTPwErr]    = React.useState("");
     const [tLogging,  setTLogging]  = React.useState(false);
     const [tStep,     setTStep]     = React.useState("name"); // name | pin | password
+    const [showPlayers, setShowPlayers] = React.useState(false);
+    const [expandedTourney, setExpandedTourney] = React.useState(null); // id of past tourney showing players
 
     const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
 
@@ -1211,6 +1213,7 @@ function AppInner() {
     };
 
     // Inline live leaderboard for a one-off tournament
+    // Live leaderboard summary rows
     const TourneyLeaderboard = ({ t }) => {
       const joined = t.hasPassword
         ? players.filter(p=>p.oneOffId===t.id && p.scores?.some(Boolean))
@@ -1252,6 +1255,99 @@ function AppInner() {
               <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:16,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{toPM(p.net)}</div>
             </div>
           ))}
+        </div>
+      );
+    };
+
+    // Expanded player roster with hole-by-hole scores
+    const PlayerRoster = ({ t, isLive }) => {
+      const joined = isLive
+        ? (t.hasPassword
+            ? players.filter(p=>p.oneOffId===t.id)
+            : players)
+        : (t.snapshot || []);
+      if (!joined.length) return (
+        <div style={{padding:"16px",textAlign:"center",color:"var(--text3)",fontSize:13,fontStyle:"italic"}}>No players yet.</div>
+      );
+      // For live: compute from live scores. For past: use snapshot data
+      const rows = isLive
+        ? joined.map(p=>{
+            const gross=p.scores?.filter(Boolean).reduce((a,b)=>a+b,0)||0;
+            let net=0;
+            p.scores?.forEach((s,i)=>{
+              if(!s)return; let str=0;
+              if(HCP_S[i]<=p.handicap)str++;
+              if(p.handicap>18&&HCP_S[i]<=p.handicap-18)str++;
+              net+=s-str;
+            });
+            return {...p,gross,net,thru:holesPlayed(p),scores:p.scores||Array(18).fill(null)};
+          }).sort((a,b)=>a.net-b.net)
+        : joined.map(p=>({...p,thru:p.scores?.filter(Boolean).length||18})).sort((a,b)=>a.net-b.net);
+
+      const scoreColor = (s, par) => {
+        if (!s) return "var(--text3)";
+        const d = s - par;
+        if (d <= -2) return "var(--gold)";
+        if (d === -1) return "var(--green-bright)";
+        if (d === 0)  return "var(--text)";
+        if (d === 1)  return "var(--amber)";
+        return "var(--red)";
+      };
+
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {rows.map((p, idx) => {
+            const hasScores = p.scores?.some(Boolean);
+            return (
+              <div key={p.id} style={{background:"var(--bg3)",border:`1px solid ${idx===0?"var(--green-dim)":"var(--border)"}`,borderRadius:8,overflow:"hidden"}}>
+                {/* Player header */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:hasScores?"1px solid var(--border)":"none"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:20,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)",minWidth:36}}>
+                      {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
+                    </span>
+                    <div>
+                      <div style={{fontSize:16,fontWeight:600,color:"var(--text)"}}>{p.name}</div>
+                      <div style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap} · Thru {p.thru===18?"F (Final)":p.thru||"—"}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:16,alignItems:"center"}}>
+                    {p.gross > 0 && <div style={{textAlign:"center"}}>
+                      <div style={{fontFamily:"'DM Mono'",fontSize:16,color:"var(--text3)"}}>{p.gross}</div>
+                      <div style={{fontSize:9,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>GROSS</div>
+                    </div>}
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontFamily:"'DM Mono'",fontSize:20,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{p.net!==0||p.thru>0?toPM(p.net):"—"}</div>
+                      <div style={{fontSize:9,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>NET</div>
+                    </div>
+                  </div>
+                </div>
+                {/* Hole-by-hole scores */}
+                {hasScores && (
+                  <div style={{overflowX:"auto",padding:"10px 12px"}}>
+                    <div style={{display:"flex",gap:4,minWidth:"max-content"}}>
+                      {p.scores.map((s, hi) => (
+                        <div key={hi} style={{textAlign:"center",minWidth:28}}>
+                          <div style={{fontSize:9,color:"var(--text3)",fontFamily:"'Bebas Neue'",marginBottom:2}}>{hi+1}</div>
+                          <div style={{width:28,height:28,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",
+                            fontSize:13,fontFamily:"'DM Mono'",fontWeight:600,
+                            background:s?"var(--bg4)":"transparent",
+                            color:s?scoreColor(s,pars[hi]):"var(--border2)",
+                            border:s?`1px solid ${scoreColor(s,pars[hi])}44`:"1px solid var(--border)"}}>
+                            {s||"·"}
+                          </div>
+                          <div style={{fontSize:8,color:"var(--text3)",marginTop:2}}>{pars[hi]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!hasScores && isLive && (
+                  <div style={{padding:"8px 16px",fontSize:11,color:"var(--text3)",fontStyle:"italic"}}>No scores entered yet</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       );
     };
@@ -1397,9 +1493,14 @@ function AppInner() {
                       onClick={()=>{ setSelTourney(activeTourney); setTabStep("login"); setTStep("name"); }}>
                       ENTER SCORES →
                     </button>
+                    <button onClick={()=>setShowPlayers(v=>!v)}
+                      style={{fontSize:11,padding:"6px 14px",fontFamily:"'Bebas Neue'",letterSpacing:2,background:"transparent",border:"1px solid var(--border2)",borderRadius:4,color:"var(--text3)",cursor:"pointer"}}>
+                      {showPlayers?"HIDE PLAYERS ▲":"VIEW PLAYERS ▼"}
+                    </button>
                   </div>
                 </div>
-                <TourneyLeaderboard t={activeTourney}/>
+                {!showPlayers && <TourneyLeaderboard t={activeTourney}/>}
+                {showPlayers && <PlayerRoster t={activeTourney} isLive={true}/>}
               </div>
             </div>
           </div>
@@ -1420,16 +1521,32 @@ function AppInner() {
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {pastTourneys.map(t => {
                 const winner = t.snapshot?.[0];
+                const isExpanded = expandedTourney === t.id;
                 return (
-                  <div key={t.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-                    <div>
-                      <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:1,color:"var(--text)"}}>{t.title}</div>
-                      <div style={{fontSize:12,color:"var(--text3)"}}>{t.date}{t.course?` · ${t.course}`:""}</div>
-                      {winner && <div style={{fontSize:12,color:"var(--gold)",marginTop:4}}>🏆 {winner.name} · Net {winner.net}</div>}
+                  <div key={t.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,overflow:"hidden"}}>
+                    <div style={{padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                      <div>
+                        <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:1,color:"var(--text)"}}>{t.title}</div>
+                        <div style={{fontSize:12,color:"var(--text3)"}}>{t.date}{t.course?` · ${t.course}`:""}</div>
+                        {winner && <div style={{fontSize:12,color:"var(--gold)",marginTop:4}}>🏆 {winner.name} · Net {winner.net}</div>}
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--text3)",border:"1px solid var(--border2)",borderRadius:3,padding:"2px 8px"}}>
+                          {t.snapshot?.length||0} PLAYERS
+                        </span>
+                        {t.snapshot?.length > 0 && (
+                          <button onClick={()=>setExpandedTourney(isExpanded?null:t.id)}
+                            style={{fontSize:11,padding:"5px 12px",fontFamily:"'Bebas Neue'",letterSpacing:2,background:"transparent",border:"1px solid var(--border2)",borderRadius:4,color:"var(--text3)",cursor:"pointer"}}>
+                            {isExpanded?"HIDE ▲":"VIEW ▼"}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--text3)",border:"1px solid var(--border2)",borderRadius:3,padding:"2px 8px"}}>
-                      {t.snapshot?.length||0} PLAYERS
-                    </span>
+                    {isExpanded && (
+                      <div style={{padding:"0 16px 16px",borderTop:"1px solid var(--border)"}}>
+                        <PlayerRoster t={t} isLive={false}/>
+                      </div>
+                    )}
                   </div>
                 );
               })}
