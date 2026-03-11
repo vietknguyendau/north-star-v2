@@ -489,13 +489,7 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
     return (
       <div className="fade-up">
         {/* Join code banner */}
-        <div style={{marginBottom:24,padding:"16px 20px",background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-          <div>
-            <div className="section-label" style={{marginBottom:2}}>PLAYER JOIN CODE — SHARE THIS</div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:30,letterSpacing:5,color:"var(--gold)"}}>{JOIN_CODE}</div>
-          </div>
-          <div style={{fontSize:13,color:"var(--text3)",maxWidth:280}}>Players enter this on the Register screen to join the tournament and enter scores from their phones.</div>
-        </div>
+
 
         {/* Course settings */}
         <div className="section-label">── COURSE SETTINGS</div>
@@ -1107,7 +1101,6 @@ function AppInner() {
   };
 
   const handleRegister = async () => {
-    if (regForm.code.toUpperCase() !== JOIN_CODE) { setRegError("Invalid join code."); return; }
     if (!regForm.name.trim()) { setRegError("Please enter your name."); return; }
     if (players.find(p=>p.name.toLowerCase()===regForm.name.trim().toLowerCase())) { setRegError("Name already registered."); return; }
     if (!regForm.pin || regForm.pin.length !== 4 || !/^\d{4}$/.test(regForm.pin)) { setRegError("Please set a 4-digit PIN."); return; }
@@ -1543,7 +1536,7 @@ function AppInner() {
           <div style={{textAlign:"center",padding:"60px 20px",color:"var(--text3)"}}>
             <div style={{fontSize:36,marginBottom:12}}>⛳</div>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,marginBottom:8}}>NO PLAYERS YET</div>
-            <div style={{fontSize:14}}>Share join code <strong style={{color:"var(--gold)"}}>{JOIN_CODE}</strong> with your group</div>
+
           </div>
         )}
       </div>
@@ -1746,14 +1739,11 @@ function AppInner() {
           <div style={{textAlign:"center",marginBottom:28}}>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--green)",marginBottom:8}}>JOIN THE TOURNAMENT</div>
             <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>PLAYER REGISTRATION</h2>
-            <p style={{fontSize:14,color:"var(--text2)",marginTop:8,lineHeight:1.7}}>Get the join code from your commissioner, then fill in your details.</p>
+            <p style={{fontSize:14,color:"var(--text2)",marginTop:8,lineHeight:1.7}}>Fill in your details below to join the North Star Amateur Series.</p>
           </div>
           <div className="card" style={{padding:28}}>
             <div style={{display:"flex",flexDirection:"column",gap:16}}>
-              <div>
-                <div className="section-label">JOIN CODE</div>
-                <input defaultValue={regForm.code} onBlur={e=>setRegForm(f=>({...f,code:e.target.value.toUpperCase()}))} onChange={e=>e.target.value=e.target.value.toUpperCase()} placeholder="e.g. NORTHSTAR24" style={{width:"100%",letterSpacing:3,fontFamily:"'Bebas Neue'",fontSize:18,textAlign:"center"}}/>
-              </div>
+
               <div>
                 <div className="section-label">FULL NAME</div>
                 <input defaultValue={regForm.name} onBlur={e=>setRegForm(f=>({...f,name:e.target.value}))} placeholder="First Last" style={{width:"100%"}}/>
@@ -1952,7 +1942,7 @@ function AppInner() {
               <h2 style={{fontFamily:"'Bebas Neue'",fontSize:28,letterSpacing:2}}>WHO ARE YOU?</h2>
             </div>
             <div className="card" style={{overflow:"hidden"}}>
-              {players.length === 0 && <div style={{padding:32,textAlign:"center",color:"var(--text3)",fontSize:14}}>No players registered yet.<br/>Register first using your join code.</div>}
+              {players.length === 0 && <div style={{padding:32,textAlign:"center",color:"var(--text3)",fontSize:14}}>No players registered yet.<br/>Register using the Register tab.</div>}
               {players.map(p=>(
                 <div key={p.id} className="player-row" style={{padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}
                   onClick={()=>{ setPendingPlayer(p); setScorePin(""); setScorePinError(""); }}>
