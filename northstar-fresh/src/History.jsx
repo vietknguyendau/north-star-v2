@@ -76,6 +76,7 @@ export default function TournamentHistory({ players, adminUnlocked }) {
   const [innerTab,      setInnerTab]      = useState("leaderboard");
   const [selectedPlayer,setSelectedPlayer] = useState(null);
   const [mainTab,       setMainTab]       = useState("season"); // top-level: "season" | "oneoff"
+  const [activeOneOff,  setActiveOneOff]  = useState(null);
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"tournament_snapshots"), snap => {
@@ -95,7 +96,10 @@ export default function TournamentHistory({ players, adminUnlocked }) {
       arr.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
       setOneOffTourneys(arr);
     });
-    return () => { u1(); u2(); u3(); u4(); u5(); };
+    const u6 = onSnapshot(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), snap => {
+      setActiveOneOff(snap.exists() ? snap.data() : null);
+    });
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); };
   }, []);
 
   const lockedEvents = SEASON_EVENTS.filter(e => eventMeta[e.id]?.locked);
@@ -400,14 +404,27 @@ export default function TournamentHistory({ players, adminUnlocked }) {
       {mainTab === "oneoff" && (
         <>
           <div className="hist-label">── ONE-OFF TOURNAMENTS</div>
-          {oneOffTourneys.length === 0 ? (
+
+          {/* Active tournament in-progress banner */}
+          {activeOneOff && (
+            <div style={{padding:"16px 20px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:6,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+              <div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:4}}>🟢 IN PROGRESS — LIVE</div>
+                <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:2,color:"var(--text)"}}>{activeOneOff.title}</div>
+                <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{activeOneOff.date}{activeOneOff.course?` · ${activeOneOff.course}`:""}</div>
+              </div>
+              <div style={{fontSize:13,color:"var(--text3)",fontStyle:"italic"}}>Scores update live. Admin locks results when done.</div>
+            </div>
+          )}
+
+          {oneOffTourneys.length === 0 && !activeOneOff ? (
             <div className="hist-card" style={{padding:"48px 32px",textAlign:"center",marginBottom:24}}>
               <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"var(--text3)",marginBottom:8}}>NO ONE-OFF TOURNAMENTS YET</div>
               <div style={{fontSize:14,color:"var(--text3)",fontStyle:"italic"}}>
                 {adminUnlocked ? "Create one using the Admin panel below." : "Admins can create one-off tournaments from the Admin panel."}
               </div>
             </div>
-          ) : (
+          ) : oneOffTourneys.length > 0 ? (
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12,marginBottom:28}}>
               {oneOffTourneys.map(t => {
                 const isSelected = selectedEvent === t.id && selectedType === "oneoff";
@@ -431,7 +448,7 @@ export default function TournamentHistory({ players, adminUnlocked }) {
                 );
               })}
             </div>
-          )}
+          ) : null}
 
           {/* One-off detail */}
           {selectedOneOff && (

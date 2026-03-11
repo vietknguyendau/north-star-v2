@@ -216,12 +216,14 @@ function PinResetButton({ player, notify }) {
 
 // ── One-Off Tournament Creator (used inside AdminView)
 function OneOffCreator({ players, notify }) {
-  const [title,   setTitle]   = React.useState("");
-  const [date,    setDate]    = React.useState("");
-  const [course,  setCourse2] = React.useState("");
-  const [notes,   setNotes]   = React.useState("");
-  const [saving,  setSaving]  = React.useState(false);
-  const [tourneys,setTourneys]= React.useState([]);
+  const [title,    setTitle]    = React.useState("");
+  const [date,     setDate]     = React.useState("");
+  const [course,   setCourse2]  = React.useState("");
+  const [notes,    setNotes]    = React.useState("");
+  const [saving,   setSaving]   = React.useState(false);
+  const [starting, setStarting] = React.useState(false);
+  const [tourneys, setTourneys] = React.useState([]);
+  const [active,   setActive]   = React.useState(null); // active one-off from Firebase
 
   React.useEffect(() => {
     const unsub = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments"), snap => {
@@ -229,14 +231,35 @@ function OneOffCreator({ players, notify }) {
       arr.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
       setTourneys(arr);
     });
-    return () => unsub();
+    const unsub2 = onSnapshot(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), snap => {
+      setActive(snap.exists() ? snap.data() : null);
+    });
+    return () => { unsub(); unsub2(); };
   }, []);
 
-  const create = async () => {
-    if (!title.trim()) { notify("Enter a tournament title.", "error"); return; }
+  const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
+
+  const startTournament = async () => {
+    if (!title.trim()) { notify("Enter a title before starting.", "error"); return; }
+    if (!window.confirm(`Start "${title.trim()}"? This will clear all player scores so everyone starts fresh.`)) return;
+    setStarting(true);
+    // Clear all player scores
+    for (const p of players) {
+      await updateDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",p.id), { scores: Array(18).fill(null) });
+    }
+    // Save active one-off state
+    await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), {
+      title: title.trim(), date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+      course: course.trim(), notes: notes.trim(), startedAt: Date.now(),
+    });
+    setStarting(false);
+    notify(`"${title.trim()}" started! All scores cleared. Players can now enter scores. 🏌️`);
+  };
+
+  const lockAndSave = async () => {
+    const t = active || { title: title.trim(), date: date, course: course.trim(), notes: notes.trim() };
+    if (!t.title) { notify("No active tournament to lock.", "error"); return; }
     setSaving(true);
-    // Snapshot current player scores sorted by net score
-    const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
     const snap = players
       .filter(p => p.scores && p.scores.some(Boolean))
       .map(p => {
@@ -255,16 +278,22 @@ function OneOffCreator({ players, notify }) {
 
     const id = `oneoff-${Date.now()}`;
     await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",id), {
-      id, title: title.trim(),
-      date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
-      course: course.trim(),
-      notes: notes.trim(),
-      snapshot: snap,
-      createdAt: Date.now(),
+      id, title: t.title,
+      date: t.date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+      course: t.course || "", notes: t.notes || "",
+      snapshot: snap, createdAt: Date.now(),
     });
+    // Clear active state
+    await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
     setTitle(""); setDate(""); setCourse2(""); setNotes("");
     setSaving(false);
-    notify(`"${title.trim()}" saved! View it in the History tab. 🏆`);
+    notify(`"${t.title}" locked and saved! View it in History. 🏆`);
+  };
+
+  const cancelActive = async () => {
+    if (!window.confirm("Cancel the active tournament? Scores will remain but the tournament won't be saved.")) return;
+    await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
+    notify("Tournament cancelled.");
   };
 
   const remove = async (id, name) => {
@@ -273,41 +302,64 @@ function OneOffCreator({ players, notify }) {
     notify("Tournament deleted.");
   };
 
+  const playersWithScores = players.filter(p=>p.scores?.some(Boolean)).length;
+
   return (
     <div>
-      <div className="card" style={{padding:20,marginBottom:16}}>
-        <div style={{fontSize:13,color:"var(--text3)",marginBottom:14,lineHeight:1.6}}>
-          Creates a permanent snapshot of the current leaderboard as a standalone tournament. Use this for charity rounds, scrambles, skins games, or any event outside the regular season.
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-          <div style={{gridColumn:"1/-1"}}>
-            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>TOURNAMENT TITLE *</div>
-            <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Charity Scramble · July 4th" style={{width:"100%",fontSize:15,padding:"9px 12px"}}/>
-          </div>
-          <div>
-            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>DATE</div>
-            <input value={date} onChange={e=>setDate(e.target.value)} placeholder="e.g. July 4, 2026" style={{width:"100%"}}/>
-          </div>
-          <div>
-            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>COURSE</div>
-            <input value={course} onChange={e=>setCourse2(e.target.value)} placeholder="e.g. Rum River Hills" style={{width:"100%"}}/>
-          </div>
-          <div style={{gridColumn:"1/-1"}}>
-            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>NOTES (optional)</div>
-            <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. Skins format, $5/hole" style={{width:"100%"}}/>
+      {/* Active tournament banner */}
+      {active && (
+        <div style={{padding:"16px 20px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:6,marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+            <div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:4}}>🟢 TOURNAMENT IN PROGRESS</div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,color:"var(--text)"}}>{active.title}</div>
+              <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{active.date}{active.course?` · ${active.course}`:""}</div>
+              <div style={{fontSize:12,color:"var(--green)",marginTop:6}}>{playersWithScores} players have entered scores</div>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button className="btn-gold" style={{fontSize:12}} onClick={lockAndSave} disabled={saving}>
+                {saving?"SAVING…":"📸 LOCK IN & SAVE RESULTS"}
+              </button>
+              <button className="btn-danger" style={{fontSize:11}} onClick={cancelActive}>✕ CANCEL</button>
+            </div>
           </div>
         </div>
-        <div style={{fontSize:11,color:"var(--amber)",marginBottom:12}}>
-          ⚡ Snapshots {players.filter(p=>p.scores?.some(Boolean)).length} players with active scores
-        </div>
-        <button className="btn-gold" style={{fontSize:13}} onClick={create} disabled={saving||!title.trim()}>
-          {saving?"SAVING…":"📸 LOCK IN & SAVE TOURNAMENT"}
-        </button>
-      </div>
+      )}
 
+      {/* Setup form — only show when no active tournament */}
+      {!active && (
+        <div className="card" style={{padding:20,marginBottom:16}}>
+          <div style={{fontSize:13,color:"var(--text3)",marginBottom:14,lineHeight:1.6}}>
+            Set up a one-off tournament (scramble, charity round, skins game, etc). Hit <strong style={{color:"var(--text)"}}>Start</strong> to clear all scores so players start fresh, then <strong style={{color:"var(--text)"}}>Lock In</strong> when everyone is done.
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <div style={{gridColumn:"1/-1"}}>
+              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>TOURNAMENT TITLE *</div>
+              <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. July 4th Scramble" style={{width:"100%",fontSize:15,padding:"9px 12px"}}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>DATE</div>
+              <input value={date} onChange={e=>setDate(e.target.value)} placeholder="e.g. July 4, 2026" style={{width:"100%"}}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>COURSE</div>
+              <input value={course} onChange={e=>setCourse2(e.target.value)} placeholder="e.g. Rum River Hills" style={{width:"100%"}}/>
+            </div>
+            <div style={{gridColumn:"1/-1"}}>
+              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>NOTES (optional)</div>
+              <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. Scramble format, $10/player" style={{width:"100%"}}/>
+            </div>
+          </div>
+          <button className="btn-gold" style={{fontSize:14,padding:"12px 28px"}} onClick={startTournament} disabled={starting||!title.trim()}>
+            {starting?"CLEARING SCORES…":"🚀 START TOURNAMENT"}
+          </button>
+        </div>
+      )}
+
+      {/* Saved list */}
       {tourneys.length > 0 && (
         <div>
-          <div style={{fontSize:10,color:"var(--text3)",letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:8}}>SAVED ONE-OFF TOURNAMENTS</div>
+          <div style={{fontSize:10,color:"var(--text3)",letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:8}}>SAVED TOURNAMENTS</div>
           {tourneys.map(t=>(
             <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,marginBottom:6}}>
               <div>
@@ -1705,18 +1757,16 @@ function AppInner() {
     ["leaderboard","🏆 LEADERBOARD"],
     ["sidebets","🤝 SIDEBETS"],
     ["season","🌟 STANDINGS"],
-    ["register","✍ REGISTER"],
-    ["login","🔑 LOGIN"],
-  ];
-  const NAV_MORE = [
     ["history","📖 HISTORY"],
     ["rules","📋 RULES"],
-    ["scorecard","📋 SCORECARDS"],
+    ["register","✍ REGISTER"],
+    ["login","🔑 LOGIN"],
     ["course","🗺 COURSE"],
     ["handicap","🏅 HANDICAPS"],
     ["admin","⚙ ADMIN"],
   ];
-  const NAV = [...NAV_PRIMARY, ...NAV_MORE];
+  const NAV_MORE = [];
+  const NAV = [...NAV_PRIMARY];
   const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen;
 
   return (
@@ -1760,37 +1810,13 @@ function AppInner() {
               </button>
             </div>
           </div>
-          <div style={{display:"flex",marginTop:12,alignItems:"center",gap:0}}>
+          <div style={{display:"flex",marginTop:12,overflowX:"auto",gap:0,scrollbarWidth:"none",msOverflowStyle:"none"}}>
             {NAV_PRIMARY.map(([val,label])=>(
               <div key={val} className={`nav-pill ${activeNav===val?"active":""}`}
                 onClick={()=>{ if(val==="login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}>
                 {label}
               </div>
             ))}
-            {/* More dropdown */}
-            <div style={{position:"relative"}} onMouseLeave={()=>setMoreOpen(false)}>
-              <div className={`nav-pill ${NAV_MORE.some(([v])=>v===activeNav)?"active":""}`}
-                onClick={()=>setMoreOpen(o=>!o)}
-                style={{cursor:"pointer",userSelect:"none"}}>
-                {NAV_MORE.some(([v])=>v===activeNav)
-                  ? NAV_MORE.find(([v])=>v===activeNav)?.[1]
-                  : "⋯ MORE"}
-              </div>
-              {moreOpen && (
-                <div style={{position:"absolute",top:"100%",right:0,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,zIndex:100,minWidth:180,boxShadow:"0 8px 24px rgba(0,0,0,.6)"}}>
-                  {NAV_MORE.map(([val,label])=>(
-                    <div key={val}
-                      style={{padding:"11px 18px",fontSize:12,fontFamily:"'Bebas Neue'",letterSpacing:2,cursor:"pointer",
-                        color:activeNav===val?"var(--gold)":"var(--text2)",
-                        background:activeNav===val?"var(--bg3)":"transparent",
-                        borderBottom:"1px solid var(--border)"}}
-                      onClick={()=>{ setScreen(val); setMoreOpen(false); }}>
-                      {label}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
