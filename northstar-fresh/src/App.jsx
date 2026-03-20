@@ -2565,20 +2565,14 @@ function AppInner() {
 
   // ══════════════════════════════════════════════════════════════════════════
   // ROOT RENDER
-  const NAV_PRIMARY = [
-    ["leaderboard","🏆 LEADERBOARD"],
-    ["tournament","⛳ TOURNAMENTS"],
-    ["sidebets","🤝 SIDEBETS"],
-    ["season","🌟 STANDINGS"],
-    ["history","📖 HISTORY"],
-    ["rules","📋 RULES"],
-    ["register","✍ REGISTER"],
-    ["amateurs","🏌 AMATEURS"],
-    ["login","🔑 LOGIN"],
-    ["course","🗺 COURSE"],
-    ["handicap","🏅 HANDICAPS"],
-    ["admin","⚙ ADMIN"],
-  ];
+ const NAV_PRIMARY = [
+  ["leaderboard","🏆 LEADERBOARD"],
+  ["tournament","⛳ TOURNAMENTS"],
+  ["season","🌟 STANDINGS"],
+  ["rules","📋 RULES"],
+  ["course","🗺 COURSE"],
+  ["handicap","🏅 HANDICAPS"],
+];
   const NAV_MORE = [];
   const NAV = [...NAV_PRIMARY];
   const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen==="tournament-scores"?"tournament":screen==="amateur-register"?"amateurs":screen;
