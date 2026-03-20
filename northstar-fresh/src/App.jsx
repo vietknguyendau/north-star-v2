@@ -936,6 +936,9 @@ function AppInner() {
   const [activePlayer, setActivePlayer] = useState(null);
   const [activeHole, setActiveHole]   = useState(0);
   const [regForm, setRegForm]         = useState({ code:"", name:"", email:"", handicap:"", flight:"Scratch (0-5)", pin:"", pin2:"" });
+  const [amateurForm, setAmateurForm] = useState({ name:"", email:"", handicap:"", pin:"", pin2:"" });
+  const [amateurError, setAmateurError] = useState("");
+  const [amateurSuccess, setAmateurSuccess] = useState(false);
   const [regError, setRegError]       = useState("");
   const [regSuccess, setRegSuccess]   = useState(false);
   const [showScModal, setShowScModal] = useState(false);
@@ -1071,7 +1074,7 @@ function AppInner() {
 
   // ── Player helpers ──
   const sortedFlight = flight => {
-    const base = players; // unified leaderboard — no flight filtering
+    const base = players.filter(p => p.memberType !== "amateur"); // exclude amateurs from main board
     return [...base].sort((a,b)=>{
       const an=calcNet(a,pars), bn=calcNet(b,pars);
       if(an===null&&bn===null)return 0;
@@ -1114,11 +1117,28 @@ function AppInner() {
     }
     const id  = `player-${Date.now()}`;
     const pinHash = await hashPin(regForm.pin);
-    const np  = { id, name:regForm.name.trim(), email:regForm.email.trim().toLowerCase(), handicap:parseInt(regForm.handicap)||0, flight:regForm.flight, scores:Array(18).fill(null), pinHash, ...(oneOffId?{oneOffId}:{}) };
+    const np  = { id, name:regForm.name.trim(), email:regForm.email.trim().toLowerCase(), handicap:parseInt(regForm.handicap)||0, flight:regForm.flight, scores:Array(18).fill(null), pinHash, memberType:"league", ...(oneOffId?{oneOffId}:{}) };
     await savePlayer(np);
     setActivePlayer(np.id);
     setRegSuccess(true);
     notify(oneOffId ? `Welcome, ${np.name}! You've joined "${activeOneOff.title}" 🏌️` : `Welcome, ${np.name}! 🏌️`);
+  };
+
+  // ── AMATEUR REGISTRATION
+  const handleAmateurRegister = async () => {
+    if (!amateurForm.name.trim()) { setAmateurError("Please enter your name."); return; }
+    if (players.find(p=>p.name.toLowerCase()===amateurForm.name.trim().toLowerCase())) { setAmateurError("Name already registered."); return; }
+    if (!amateurForm.pin || amateurForm.pin.length !== 4) { setAmateurError("Please set a 4-digit PIN."); return; }
+    if (amateurForm.pin !== amateurForm.pin2) { setAmateurError("PINs do not match."); return; }
+    setAmateurError("");
+    const id = Date.now().toString();
+    const pinHash = await hashPin(amateurForm.pin);
+    const np = { id, name:amateurForm.name.trim(), email:amateurForm.email.trim().toLowerCase(), handicap:parseInt(amateurForm.handicap)||0, flight:"Amateur", scores:Array(18).fill(null), pinHash, memberType:"amateur" };
+    await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"players",id), np);
+    setActivePlayer(np);
+    setAmateurSuccess(true);
+    setAmateurForm({ name:"", email:"", handicap:"", pin:"", pin2:"" });
+    notify(`Welcome, ${np.name}! You're registered as an amateur. 🏌️`);
   };
 
   const handleFileUpload = e => {
@@ -1649,11 +1669,35 @@ function AppInner() {
           setSelectedPid={setSelectedPid}
           setScreen={setScreen}
         />
-        {players.length===0 && (
+        {players.filter(p=>p.memberType!=="amateur").length===0 && (
           <div style={{textAlign:"center",padding:"60px 20px",color:"var(--text3)"}}>
             <div style={{fontSize:36,marginBottom:12}}>⛳</div>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,marginBottom:8}}>NO PLAYERS YET</div>
+          </div>
+        )}
 
+        {/* Amateurs section */}
+        {players.filter(p=>p.memberType==="amateur").length > 0 && (
+          <div style={{marginTop:32}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+              <span>── AMATEUR MEMBERS</span>
+              <button style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,background:"transparent",border:"1px solid var(--border2)",color:"var(--text3)",borderRadius:3,padding:"2px 10px",cursor:"pointer"}}
+                onClick={()=>setScreen("amateurs")}>VIEW ALL →</button>
+            </div>
+            <div className="card" style={{overflow:"hidden"}}>
+              {players.filter(p=>p.memberType==="amateur").map((p,idx)=>(
+                <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:"1px solid var(--border)"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:"var(--text3)",minWidth:28}}>{idx+1}</span>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:600,color:"var(--text2)"}}>{p.name}</div>
+                      <div style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap}</div>
+                    </div>
+                  </div>
+                  <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--gold)",border:"1px solid #c8a84a44",borderRadius:3,padding:"2px 8px"}}>AMATEUR</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -1919,6 +1963,142 @@ function AppInner() {
           <div style={{fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:2,color:"var(--gold)",marginBottom:10}}>YOU'RE IN!</div>
           <p style={{fontSize:16,color:"var(--text2)",marginBottom:28,lineHeight:1.8}}>Welcome, <strong>{activePlayer?.name}</strong>. Good luck out there.</p>
           <button className="btn-gold" style={{padding:"12px 32px",fontSize:14}} onClick={()=>setScreen("my-scores")}>START ENTERING SCORES →</button>
+        </div>
+      )}
+    </div>
+  );
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // AMATEURS DIRECTORY VIEW
+  const AmateursView = () => {
+    const amateurs = players.filter(p => p.memberType === "amateur");
+    const leagueMembers = players.filter(p => p.memberType !== "amateur");
+    return (
+      <div className="fade-up" style={{maxWidth:600,margin:"0 auto"}}>
+        {/* Header */}
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:5,color:"var(--gold)",marginBottom:8}}>NORTH STAR AMATEUR SERIES · 2026</div>
+          <h2 style={{fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:2,marginBottom:8}}>AMATEUR MEMBERS</h2>
+          <p style={{fontSize:14,color:"var(--text3)",lineHeight:1.7,maxWidth:400,margin:"0 auto"}}>
+            Amateur members are registered with the league but not competing in the full season standings.
+            They can participate in one-off events and friendly rounds.
+          </p>
+        </div>
+
+        {/* CTA to register */}
+        <div style={{background:"#1a1200",border:"1px solid #c8a84a33",borderRadius:8,padding:"20px 24px",marginBottom:32,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:3,color:"var(--gold)",marginBottom:4}}>JOIN AS AN AMATEUR</div>
+            <div style={{fontSize:13,color:"var(--text3)"}}>Register to be listed in the directory and join one-off events.</div>
+          </div>
+          <button className="btn-gold" style={{fontSize:12,padding:"10px 20px",letterSpacing:2,whiteSpace:"nowrap"}}
+            onClick={()=>{ setAmateurSuccess(false); setAmateurError(""); setAmateurForm({name:"",email:"",handicap:"",pin:"",pin2:""}); setScreen("amateur-register"); }}>
+            REGISTER →
+          </button>
+        </div>
+
+        {/* Amateur roster */}
+        {amateurs.length === 0 ? (
+          <div style={{padding:"40px 20px",textAlign:"center",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8}}>
+            <div style={{fontSize:32,marginBottom:12}}>🏌️</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,marginBottom:8}}>NO AMATEURS YET</div>
+            <div style={{fontSize:13,color:"var(--text3)"}}>Be the first to register as an amateur member.</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:14}}>
+              ── {amateurs.length} AMATEUR{amateurs.length!==1?"S":""} REGISTERED
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {amateurs.map((p, idx) => (
+                <div key={p.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14}}>
+                    <div style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"var(--text3)",minWidth:32}}>{idx+1}</div>
+                    <div>
+                      <div style={{fontSize:16,fontWeight:600,color:"var(--text)"}}>{p.name}</div>
+                      <div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>HCP {p.handicap}</div>
+                    </div>
+                  </div>
+                  <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--gold)",border:"1px solid #c8a84a44",borderRadius:3,padding:"2px 8px"}}>AMATEUR</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Divider to league members count */}
+        <div style={{marginTop:32,padding:"16px 20px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:13,color:"var(--text3)"}}>Full season league members</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"var(--green)"}}>{leagueMembers.length}</span>
+            <span style={{fontSize:12,color:"var(--text3)"}}>/ 32</span>
+            <button className="btn-ghost btn-sm" style={{fontSize:11}} onClick={()=>setScreen("leaderboard")}>VIEW →</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // AMATEUR REGISTRATION VIEW
+  const AmateurRegisterView = () => (
+    <div className="fade-up" style={{maxWidth:460,margin:"0 auto"}}>
+      {!amateurSuccess ? (
+        <>
+          <div style={{textAlign:"center",marginBottom:28}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--gold)",marginBottom:8}}>JOIN AS AN AMATEUR</div>
+            <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>AMATEUR REGISTRATION</h2>
+            <p style={{fontSize:14,color:"var(--text2)",marginTop:8,lineHeight:1.7}}>
+              Not competing in the full season? Register as an amateur to be listed in the league directory and join one-off events.
+            </p>
+          </div>
+          <div className="card" style={{padding:28}}>
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              <div>
+                <div className="section-label">FULL NAME</div>
+                <input defaultValue={amateurForm.name} onBlur={e=>setAmateurForm(f=>({...f,name:e.target.value}))} placeholder="First Last" style={{width:"100%"}}/>
+              </div>
+              <div>
+                <div className="section-label">EMAIL ADDRESS</div>
+                <input type="email" defaultValue={amateurForm.email} onBlur={e=>setAmateurForm(f=>({...f,email:e.target.value}))} placeholder="you@email.com" style={{width:"100%"}}/>
+                <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>For event invitations and announcements.</div>
+              </div>
+              <div>
+                <div className="section-label">HANDICAP INDEX</div>
+                <input type="number" defaultValue={amateurForm.handicap} onBlur={e=>setAmateurForm(f=>({...f,handicap:e.target.value}))} placeholder="0" min="0" max="54" style={{width:"100%"}}/>
+                <div style={{fontSize:11,color:"var(--amber)",marginTop:5,lineHeight:1.4}}>⚠ Commissioner verifies before Event 1. Have your Grint screenshot ready.</div>
+              </div>
+              <div style={{display:"flex",gap:12}}>
+                <div style={{flex:1}}>
+                  <div className="section-label">YOUR PIN</div>
+                  <input type="password" maxLength={4} defaultValue={amateurForm.pin} onBlur={e=>setAmateurForm(f=>({...f,pin:e.target.value.replace(/\D/g,"")}))} placeholder="4 digits" style={{width:"100%",letterSpacing:6,textAlign:"center",fontSize:18}}/>
+                </div>
+                <div style={{flex:1}}>
+                  <div className="section-label">CONFIRM PIN</div>
+                  <input type="password" maxLength={4} defaultValue={amateurForm.pin2} onBlur={e=>setAmateurForm(f=>({...f,pin2:e.target.value.replace(/\D/g,"")}))} placeholder="4 digits" style={{width:"100%",letterSpacing:6,textAlign:"center",fontSize:18}}/>
+                </div>
+              </div>
+              <div style={{fontSize:12,color:"var(--text3)",fontStyle:"italic"}}>🔒 Your PIN protects your profile. Set it now so you can log in later.</div>
+              {/* Amateur badge preview */}
+              <div style={{padding:"10px 14px",background:"#1a1200",border:"1px solid #c8a84a33",borderRadius:4,display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:3,padding:"2px 8px"}}>AMATEUR</span>
+                <span style={{fontSize:12,color:"var(--text3)"}}>You'll appear in the Amateurs section of the league directory.</span>
+              </div>
+              {amateurError && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"10px 14px",borderRadius:4}}>{amateurError}</div>}
+              <button className="btn-gold" style={{width:"100%",padding:13,fontSize:15,marginTop:4}} onClick={handleAmateurRegister}>REGISTER AS AMATEUR →</button>
+            </div>
+          </div>
+          <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"var(--text3)"}}>
+            Competing in the full season? <span style={{color:"var(--gold)",cursor:"pointer"}} onClick={()=>setScreen("register")}>League registration →</span>
+          </div>
+        </>
+      ) : (
+        <div style={{textAlign:"center",paddingTop:40}}>
+          <div style={{fontSize:52,marginBottom:16}}>🏌️</div>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:2,color:"var(--gold)",marginBottom:10}}>YOU'RE IN!</div>
+          <div style={{display:"inline-block",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:3,padding:"3px 12px",marginBottom:16}}>AMATEUR</div>
+          <p style={{fontSize:16,color:"var(--text2)",marginBottom:28,lineHeight:1.8}}>Welcome, <strong>{activePlayer?.name}</strong>.<br/>You're registered as an amateur member.</p>
+          <button className="btn-ghost" style={{padding:"12px 32px",fontSize:14}} onClick={()=>setScreen("leaderboard")}>VIEW LEADERBOARD →</button>
         </div>
       )}
     </div>
@@ -2393,6 +2573,7 @@ function AppInner() {
     ["history","📖 HISTORY"],
     ["rules","📋 RULES"],
     ["register","✍ REGISTER"],
+    ["amateurs","🏌 AMATEURS"],
     ["login","🔑 LOGIN"],
     ["course","🗺 COURSE"],
     ["handicap","🏅 HANDICAPS"],
@@ -2400,7 +2581,7 @@ function AppInner() {
   ];
   const NAV_MORE = [];
   const NAV = [...NAV_PRIMARY];
-  const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen==="tournament-scores"?"tournament":screen;
+  const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen==="tournament-scores"?"tournament":screen==="amateur-register"?"amateurs":screen;
 
   return (
     <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--text)"}}>
@@ -2468,6 +2649,8 @@ function AppInner() {
         {screen==="scorecard"       && <ScorecardView/>}
         {screen==="course"          && <CourseView/>}
         {screen==="register"        && <RegisterView/>}
+        {screen==="amateurs"          && <AmateursView/>}
+        {screen==="amateur-register"  && <AmateurRegisterView/>}
         {(screen==="login"||screen==="my-scores-login") && <LoginView/>}
         {screen==="my-scores"       && <MyScores/>}
         {screen==="history" && <TournamentHistory players={players} adminUnlocked={adminUnlocked} />}

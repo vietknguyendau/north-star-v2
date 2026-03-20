@@ -5,7 +5,7 @@ import { doc, onSnapshot, setDoc } from "firebase/firestore";
 const TOURNAMENT_ID = "tournament-2024";
 
 const DEFAULT_RULES = {
-  leagueFormat: `The North Star Amateur Series is a six-event net stroke play league held on Saturdays throughout the 2026 Minnesota golf season. The league is open to 32 registered members who have paid the $300 season dues prior to the Opening Classic.
+  leagueFormat: `The North Star Amateur Series is a six-event net stroke play league held on Saturdays throughout the 2026 Minnesota golf season. The league is open to 32 registered members who have paid the $200 season dues prior to the Opening Classic.
 
 Net scoring ensures fair competition across all skill levels. Your net score is calculated by subtracting your course handicap from your gross score. The player with the lowest net score wins the event.
 
@@ -38,46 +38,46 @@ Event 6 (North Star Championship) — 3× points multiplier
 
 These two events carry the most weight in the standings. A win at Event 6 is worth 300 points — three times a standard event. Consistent play all season is rewarded, but showing up for the majors is essential.
 
-SEASON POINTS CHAMPION: The player with the most cumulative points after dropping their two lowest events is crowned Season Points Champion and receives a $750 cash bonus, awarded at the banquet.`,
+SEASON POINTS CHAMPION: The player with the most cumulative points after dropping their two lowest events is crowned Season Points Champion and receives a $500 cash bonus, awarded at the banquet.`,
 
-  payoutStructure: `The $300 season dues from 32 players generate a $9,600 total fund, distributed as follows:
+  payoutStructure: `The $200 season dues from 32 players generate a $6,400 total fund, distributed as follows:
 
 FULL FUND ALLOCATION:
-• Events 1, 2, 3, 5 payouts — $2,000 ($500 each)
-• Event 4 Mid-Season Major payout — $750
-• Event 6 Championship payout — $2,000
-• Season Points Champion bonus — $750
-• Ryder Cup prize fund — $500
-• Merchandise (welcome pack) — $1,500
-• Championship Trophy — $200
-• Ryder Cup Trophy — $200
-• Banquet & Misc — $700
-• TOTAL — $9,600
+• Events 1, 2, 3, 5 payouts — $1,300 ($325 each)
+• Event 4 Mid-Season Major payout — $500
+• Event 6 Championship payout — $1,300
+• Season Points Champion bonus — $500
+• Ryder Cup prize fund — $300
+• Merchandise (welcome pack) — $1,000
+• Championship Trophy — $150
+• Ryder Cup Trophy — $150
+• Banquet & Misc — $1,200
+• TOTAL — $6,400
 
-STANDARD EVENT PAYOUTS (Events 1, 2, 3, 5) — $500 purse:
+STANDARD EVENT PAYOUTS (Events 1, 2, 3, 5) — $325 purse:
+1st — $160
+2nd — $80
+3rd — $50
+4th — $35
+
+EVENT 4 — MID-SEASON MAJOR — $500 purse:
 1st — $250
 2nd — $125
 3rd — $75
 4th — $50
 
-EVENT 4 — MID-SEASON MAJOR — $750 purse:
-1st — $375
-2nd — $188
-3rd — $112
-4th — $75
+EVENT 6 — NORTH STAR CHAMPIONSHIP — $1,300 purse:
+1st — $520
+2nd — $325
+3rd — $230
+4th — $145
+5th — $80
 
-EVENT 6 — NORTH STAR CHAMPIONSHIP — $2,000 purse:
-1st — $800
-2nd — $500
-3rd — $360
-4th — $220
-5th — $120
-
-SEASON POINTS CHAMPION — $750
+SEASON POINTS CHAMPION — $500
 Separate from Event 6. Awarded to the player with the highest cumulative season points total. Announced and paid out at the Season-Ending Banquet.
 
-RYDER CUP — $500
-Split evenly across all members of the winning Ryder Cup team (~$31 per player).
+RYDER CUP — $300
+Split evenly across all members of the winning Ryder Cup team (~$19 per player).
 
 All payouts are made in cash. Event payouts are distributed same-day. Season champion and Ryder Cup payouts are distributed at the banquet.`,
 
@@ -111,11 +111,11 @@ PHONES & DEVICES: Phones may be used for GPS yardage and score entry only during
 
 DISPUTES: Any scoring disputes must be raised with the commissioner before leaving the course. Post-round disputes will not be accepted or reviewed.
 
-DUES & FEES: Season dues of $300 must be paid in full prior to playing Event 1. Players with outstanding balances will be withheld from payout eligibility until dues are settled.
+DUES & FEES: Season dues of $200 must be paid in full by May 1, 2026 (registration deadline) prior to playing Event 1. Players with unpaid dues will not appear on the official roster. Players with outstanding balances will be withheld from payout eligibility until dues are settled.
 
 ALCOHOL POLICY: Drinking is permitted in accordance with course rules. Players deemed unfit to play safely by the commissioner may be asked to withdraw from the round.`,
 
-  ryderCupFormat: `The North Star Ryder Cup Finale is held September 26, 2026 and is open exclusively to the top 12 players in season standings following the conclusion of Event 6.
+  ryderCupFormat: `The North Star Ryder Cup Finale is held October 3, 2026 and is open exclusively to the top 12 players in season standings following the conclusion of Event 6.
 
 QUALIFICATION: Top 12 players by cumulative season points after best-4-of-6 drops are applied. In the event of a tie, the player with more events played advances. Commissioner has final say on tiebreakers.
 
@@ -129,7 +129,7 @@ SCORING: 1 point per match won. 0.5 points per halved match. The team with the m
 
 HANDICAPS: Adjusted handicaps are used for competitive balance in match play. The commissioner will announce all adjustments prior to the event.
 
-PRIZE FUND: $500 split evenly among members of the winning team (~$31/player), paid out at the banquet.
+PRIZE FUND: $300 split evenly among members of the winning team (~$19/player), paid out at the banquet.
 
 TROPHY: The Ryder Cup trophy is held by the winning team until the following year's finale. Team members' names are engraved on the trophy annually.
 
@@ -137,55 +137,58 @@ This event does not count toward season standings points but carries its own tro
 
   scheduleOverview: `2026 NORTH STAR AMATEUR SERIES — FULL SCHEDULE
 
+📌 REGISTRATION DEADLINE: MAY 1, 2026
+Spots are limited to 32 players. Register and pay $200 dues by May 1 to lock your spot. Early interest by April 15 recommended — roster fills fast.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EVENT 1 — OPENING CLASSIC
-May 30, 2026
-Net Stroke Play · $500 Purse
+May 30, 2026 (Saturday)
+Net Stroke Play · $325 Purse
 Rum River Hills Golf Course, Anoka MN
-Payout: 1st $250 · 2nd $125 · 3rd $75 · 4th $50
+Payout: 1st $160 · 2nd $80 · 3rd $50 · 4th $35
 
 EVENT 2 — EARLY SUMMER MEDAL
-June 20, 2026
-Net Stroke Play · $500 Purse
+June 20, 2026 (Saturday)
+Net Stroke Play · $325 Purse
 Links at Northfork, Ramsey MN
-Payout: 1st $250 · 2nd $125 · 3rd $75 · 4th $50
+Payout: 1st $160 · 2nd $80 · 3rd $50 · 4th $35
 
 EVENT 3 — MID-SUMMER MEDAL
-July 11, 2026
-Net Stroke Play · $500 Purse
+July 11, 2026 (Saturday)
+Net Stroke Play · $325 Purse
 Oak Marsh / Eagle Valley
-Payout: 1st $250 · 2nd $125 · 3rd $75 · 4th $50
+Payout: 1st $160 · 2nd $80 · 3rd $50 · 4th $35
 
 EVENT 4 — NORTH STAR MID-SEASON MAJOR ⭐ [2× POINTS]
-August 1, 2026
-Net Stroke Play · $750 Purse · 2× Points Multiplier
+August 1, 2026 (Saturday)
+Net Stroke Play · $500 Purse · 2× Points Multiplier
 Keller / Edinburgh
-Payout: 1st $375 · 2nd $188 · 3rd $112 · 4th $75
-
-EVENT 5 — LATE-SEASON PUSH
-August 22, 2026
-Net Stroke Play · $500 Purse
-Cedar Creek / Fox Hollow
 Payout: 1st $250 · 2nd $125 · 3rd $75 · 4th $50
 
+EVENT 5 — LATE-SEASON PUSH
+August 22, 2026 (Saturday)
+Net Stroke Play · $325 Purse
+Cedar Creek / Fox Hollow
+Payout: 1st $160 · 2nd $80 · 3rd $50 · 4th $35
+
 EVENT 6 — NORTH STAR CHAMPIONSHIP ⭐⭐ [3× POINTS]
-September 12, 2026
-Net Stroke Play · $2,000 Purse · 3× Points Multiplier
+September 12, 2026 (Saturday)
+Net Stroke Play · $1,300 Purse · 3× Points Multiplier
 Mystic Lake / Keller
-Payout: 1st $800 · 2nd $500 · 3rd $360 · 4th $220 · 5th $120
+Payout: 1st $520 · 2nd $325 · 3rd $230 · 4th $145 · 5th $80
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 NON-POINTS EVENTS
 
 EVENT 7 — RYDER CUP FINALE 🏆
-September 26, 2026
-Top 12 Players · 36 Holes Match Play · $500 Team Prize Fund
+October 3, 2026 (Saturday)
+Top 12 Players · Match Play · $300 Team Prize Fund
 Championship Venue TBD
 
 EVENT 8 — SEASON-ENDING SCRAMBLE & BANQUET 🎉
-October 3, 2026
+October 24, 2026 (Saturday)
 All Members Welcome · No Points · Awards & Dinner
-Season Points Champion ($750) announced and paid out
+Season Points Champion ($500) announced and paid out
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
 };
 
@@ -233,10 +236,10 @@ function PayoutSummary() {
           ["$2,000","EVENTS 1,2,3,5 PAYOUTS","$500 × 4 events"],
           ["$750","EVENT 4 MAJOR PAYOUT","2× points event"],
           ["$2,000","EVENT 6 CHAMPIONSHIP","3× points · top 5 pay"],
-          ["$750","SEASON POINTS CHAMPION","paid at banquet"],
+          ["$500","SEASON POINTS CHAMPION","paid at banquet"],
           ["$500","RYDER CUP PRIZE FUND","~$31/player winning team"],
           ["$1,500","MERCHANDISE","quarter-zip welcome pack"],
-          ["$400","TROPHIES","championship + ryder cup"],
+          ["$300","TROPHIES","championship + ryder cup"],
           ["$700","BANQUET & MISC","event 8 awards night"],
         ].map(([amt,lbl,sub])=>(
           <div key={lbl} className="fund-card">
@@ -247,8 +250,8 @@ function PayoutSummary() {
         ))}
       </div>
       <div style={{background:"var(--bg3)",border:"1px solid var(--gold-dim)",borderRadius:5,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:4}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"var(--text3)"}}>TOTAL FUND · 32 PLAYERS × $300</div>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"var(--gold)"}}>$9,600</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"var(--text3)"}}>TOTAL FUND · 32 PLAYERS × $200</div>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:"var(--gold)"}}>$6,400</div>
       </div>
     </div>
   );
@@ -313,7 +316,7 @@ export default function RulesPage({ adminUnlocked }) {
         <div style={{fontFamily:"'Bebas Neue'",fontSize:38,letterSpacing:3,color:"var(--text)",marginBottom:6}}>NORTH STAR AMATEUR SERIES</div>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:3,color:"var(--gold)",marginBottom:14}}>RULES, FORMAT & REGULATIONS</div>
         <div style={{fontSize:14,color:"var(--text3)",fontStyle:"italic",maxWidth:500,margin:"0 auto",lineHeight:1.8}}>
-          32 players · $300 season dues · 6 counting events · $9,600 total fund
+          32 players · $200 season dues · 6 counting events · $6,400 total fund
         </div>
         <div style={{display:"flex",justifyContent:"center",gap:24,marginTop:16,flexWrap:"wrap"}}>
           {[["$6,750","IN PAYOUTS"],["$1,500","MERCHANDISE"],["2","TROPHIES"],["32","PLAYERS"]].map(([val,lbl])=>(
