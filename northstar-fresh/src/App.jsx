@@ -46,7 +46,7 @@ const DEFAULT_PAR   = [4,4,3,4,5,3,4,4,5, 4,3,4,5,4,3,4,4,5];
 const DEFAULT_YARDS = [385,412,178,395,520,162,430,388,510, 402,185,415,535,375,160,420,395,525];
 const HCP_STROKES   = [7,1,15,5,9,17,3,13,11, 8,18,4,6,16,14,2,12,10];
 const JOIN_CODE     = "NORTHSTAR24";
-const ADMIN_PIN     = "1234";
+const ADMIN_PIN     = "0723";
 const TOURNAMENT_ID = "tournament-2024"; // change per season/event
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
