@@ -3322,7 +3322,7 @@ function AppInner() {
                     boxShadow:"0 8px 32px #000c",overflow:"hidden"}}>
                   {NAV_MORE.map(([val,label])=>(
                     <div key={val}
-                      onClick={()=>{ setMoreOpen(false); if(val==="login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}
+                      onClick={(e)=>{ e.stopPropagation(); setMoreOpen(false); if(val==="login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}
                       style={{padding:"12px 18px",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:2,
                         color:activeNav===val?"var(--gold)":"var(--text2)",cursor:"pointer",
                         background:activeNav===val?"var(--bg3)":"transparent",
@@ -3330,7 +3330,8 @@ function AppInner() {
                       {label}
                     </div>
                   ))}
-                </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
