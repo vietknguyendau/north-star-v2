@@ -215,7 +215,7 @@ function PinResetButton({ player, notify }) {
 
 
 // ── One-Off Tournament Creator (used inside AdminView)
-function OneOffCreator({ players, notify }) {
+function OneOffCreator({ players, notify, courseLibrary }) {
   const [title,    setTitle]    = React.useState("");
   const [date,     setDate]     = React.useState("");
   const [course,   setCourse2]  = React.useState("");
@@ -368,6 +368,25 @@ function OneOffCreator({ players, notify }) {
                 setCourse2(c.name);
                 setCourseInfo(c);
               }}/>
+              {/* Library picker */}
+              {courseLibrary && courseLibrary.length > 0 && (
+                <div style={{marginTop:8}}>
+                  <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>── OR PICK FROM YOUR LIBRARY</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {courseLibrary.map(c=>(
+                      <button key={c.id}
+                        onClick={()=>{ setCourse2(c.name); setCourseInfo(c); }}
+                        style={{fontSize:11,padding:"5px 12px",fontFamily:"'Bebas Neue'",letterSpacing:1,
+                          background: courseInfo?.name===c.name?"var(--gold)":"var(--bg3)",
+                          border:`1px solid ${courseInfo?.name===c.name?"var(--gold)":"var(--border)"}`,
+                          color: courseInfo?.name===c.name?"#060a06":"var(--text2)",
+                          borderRadius:4,cursor:"pointer"}}>
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {courseInfo && (
                 <div style={{marginTop:8,padding:"10px 14px",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:4,fontSize:12,color:"var(--text3)",display:"flex",gap:20,flexWrap:"wrap"}}>
                   <span>Par <strong style={{color:"var(--text)"}}>{courseInfo.par}</strong></span>
@@ -414,7 +433,7 @@ function OneOffCreator({ players, notify }) {
 
 function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput, setPinInput,
   pinError, setPinError, savePlayer, removePlayerDb, saveCourse, setCourse, updateField, notify,
-  scorecardUploads }) {
+  scorecardUploads, courseLibrary, saveCourseToLibrary }) {
     const [localCourse, setLocalCourse] = useState(course || {});
     const [saving, setSaving] = useState(false);
     const [courseKey, setCourseKey] = useState(0);
@@ -467,6 +486,11 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
       notify("Course saved!");
     };
 
+    const saveToLib = async () => {
+      const updated = await collectAndSave();
+      await saveCourseToLibrary(updated);
+    };
+
     if (!adminUnlocked) return (
       <div className="fade-up" style={{maxWidth:340,margin:"0 auto",textAlign:"center"}}>
         <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:4,color:"var(--green)",marginBottom:10}}>COMMISSIONER ACCESS</div>
@@ -506,6 +530,38 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
                 setCourseKey(k=>k+1);
               }}/>
             </div>
+
+            {/* Course Library Picker */}
+            {courseLibrary.length > 0 && (
+              <div style={{gridColumn:"1/-1"}}>
+                <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:6}}>── OR LOAD FROM YOUR LIBRARY ({courseLibrary.length} saved)</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:200,overflowY:"auto",
+                  background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:8}}>
+                  {courseLibrary.map(c => (
+                    <div key={c.id}
+                      onClick={()=>{
+                        setLocalCourse(c);
+                        setCourseKey(k=>k+1);
+                        notify(`Loaded "${c.name}" from library`);
+                      }}
+                      style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                        padding:"9px 12px",borderRadius:4,cursor:"pointer",background:"var(--bg2)",
+                        border:"1px solid var(--border)",transition:"border-color 0.15s"}}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor="var(--gold)"}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
+                      <div>
+                        <div style={{fontSize:14,color:"var(--text)",fontWeight:600}}>{c.name}</div>
+                        <div style={{fontSize:11,color:"var(--text3)"}}>{c.city}</div>
+                      </div>
+                      <div style={{textAlign:"right",fontSize:11,color:"var(--text3)"}}>
+                        <div>Par {(c.par||[]).reduce((a,b)=>a+b,0)||"—"}</div>
+                        <div>Slope {c.slope} · {c.rating}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {[["Course Name","name",nameRef],["City / State","city",cityRef],["Slope Rating","slope",slopeRef],["Course Rating","rating",ratingRef]].map(([lbl,key,ref])=>(
               <div key={key}>
                 <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>{lbl.toUpperCase()}</div>
@@ -551,9 +607,14 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
             <textarea ref={descRef} defaultValue={localCourse.description??""} rows={3} style={{width:"100%",resize:"vertical"}}/>
           </div>
 
-          <button className="btn-gold" onClick={saveAll} disabled={saving} style={{fontSize:13}}>
-            {saving?"SAVING…":"SAVE COURSE CHANGES"}
-          </button>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <button className="btn-gold" onClick={saveAll} disabled={saving} style={{fontSize:13,flex:1}}>
+              {saving?"SAVING…":"SAVE AS ACTIVE COURSE"}
+            </button>
+            <button className="btn-ghost" onClick={saveToLib} style={{fontSize:13,flex:1}}>
+              📚 SAVE TO LIBRARY
+            </button>
+          </div>
         </div>
 
         {/* Players */}
@@ -651,7 +712,7 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
         {/* ── One-Off Tournament Creator */}
         <div style={{marginTop:32}}>
           <div className="section-label">── ONE-OFF TOURNAMENTS</div>
-          <OneOffCreator players={players} notify={notify} />
+          <OneOffCreator players={players} notify={notify} courseLibrary={courseLibrary} />
         </div>
       </div>
     );
@@ -927,6 +988,7 @@ function AppInner() {
   const [ctpBets, setCtpBets] = useState({});      // { holeIndex: { entries: {playerId: {feet,inche
   const [activeOneOff, setActiveOneOff] = useState(null); // active one-off tournaments,lockedIn}}, active } }
   const [moreOpen, setMoreOpen] = useState(false); // { playerId: { url, verified, uploadedAt } }
+  const [courseLibrary, setCourseLibrary] = useState([]);
   const [foursomes, setFoursomes] = useState([]);   // foursome groups from Firebase
   const [groupBets, setGroupBets] = useState([]);   // group bets from Firebase
   const [lbTab, setLbTab] = useState("individual"); // leaderboard sub-tab
@@ -1021,8 +1083,14 @@ function AppInner() {
       snap => { setActiveOneOff(snap.exists() ? snap.data() : null); }
     );
 
-    // Listen to foursomes
+    // Listen to course library
     const unsub6 = onSnapshot(
+      collection(db, "tournaments", TOURNAMENT_ID, "course_library"),
+      snap => setCourseLibrary(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>a.name.localeCompare(b.name)))
+    );
+
+    // Listen to foursomes
+    const unsub7 = onSnapshot(
       collection(db, "tournaments", TOURNAMENT_ID, "foursomes"),
       snap => setFoursomes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
@@ -1152,6 +1220,17 @@ function AppInner() {
       await deleteDoc(doc(db, "tournaments", TOURNAMENT_ID, "players", id));
       setSyncStatus("synced");
     } catch(e) { console.error(e); setSyncStatus("error"); }
+  };
+
+  const saveCourseToLibrary = async (courseData) => {
+    // Use course name as the key (normalized)
+    const id = courseData.name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "course_library", id), {
+      ...courseData,
+      id,
+      savedAt: Date.now(),
+    });
+    notify(`"${courseData.name}" saved to course library ✓`);
   };
 
   const saveCourse = async (data) => {
@@ -3293,6 +3372,8 @@ function AppInner() {
           saveCourse={saveCourse} setCourse={setCourse}
           updateField={updateField} notify={notify}
           scorecardUploads={scorecardUploads}
+          courseLibrary={courseLibrary}
+          saveCourseToLibrary={saveCourseToLibrary}
         />}
       </div>
     </div>
