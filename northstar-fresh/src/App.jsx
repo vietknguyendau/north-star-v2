@@ -3310,15 +3310,16 @@ function AppInner() {
             {/* MORE dropdown */}
             <div style={{position:"relative",flexShrink:0}}>
               <div className={`nav-pill ${NAV_MORE.some(([v])=>v===activeNav)?"active":""}`}
-                onClick={()=>setMoreOpen(v=>!v)}
+                onClick={(e)=>{ e.stopPropagation(); setMoreOpen(v=>!v); }}
                 style={{userSelect:"none"}}>
-                ··· MORE
+                ··· MORE {moreOpen?"▲":"▼"}
               </div>
               {moreOpen && (
-                <div style={{position:"absolute",top:"100%",right:0,background:"var(--bg2)",
-                  border:"1px solid var(--border2)",borderRadius:8,zIndex:100,minWidth:180,
-                  boxShadow:"0 8px 32px #000a",overflow:"hidden"}}
-                  onMouseLeave={()=>setMoreOpen(false)}>
+                <>
+                  <div style={{position:"fixed",inset:0,zIndex:99}} onClick={()=>setMoreOpen(false)}/>
+                  <div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:"var(--bg2)",
+                    border:"1px solid var(--border2)",borderRadius:8,zIndex:100,minWidth:200,
+                    boxShadow:"0 8px 32px #000c",overflow:"hidden"}}>
                   {NAV_MORE.map(([val,label])=>(
                     <div key={val}
                       onClick={()=>{ setMoreOpen(false); if(val==="login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}
