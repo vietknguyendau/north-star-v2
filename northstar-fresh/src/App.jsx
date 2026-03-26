@@ -927,6 +927,12 @@ function AppInner() {
   const [ctpBets, setCtpBets] = useState({});      // { holeIndex: { entries: {playerId: {feet,inche
   const [activeOneOff, setActiveOneOff] = useState(null); // active one-off tournaments,lockedIn}}, active } }
   const [moreOpen, setMoreOpen] = useState(false); // { playerId: { url, verified, uploadedAt } }
+  const [foursomes, setFoursomes] = useState([]);   // foursome groups from Firebase
+  const [groupBets, setGroupBets] = useState([]);   // group bets from Firebase
+  const [lbTab, setLbTab] = useState("individual"); // leaderboard sub-tab
+  const [showFoursomeModal, setShowFoursomeModal] = useState(false);
+  const [showBetModal, setShowBetModal] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [loading, setLoading]   = useState(true);
   const [syncStatus, setSyncStatus] = useState("synced"); // synced | syncing | error
 
@@ -1015,12 +1021,103 @@ function AppInner() {
       snap => { setActiveOneOff(snap.exists() ? snap.data() : null); }
     );
 
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); };
+    // Listen to foursomes
+    const unsub6 = onSnapshot(
+      collection(db, "tournaments", TOURNAMENT_ID, "foursomes"),
+      snap => setFoursomes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    // Listen to group bets
+    const unsub7 = onSnapshot(
+      collection(db, "tournaments", TOURNAMENT_ID, "group_bets"),
+      snap => setGroupBets(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); };
   }, []);
 
   const notify = (msg, type="success") => {
     setNotif({ msg, type });
     setTimeout(() => setNotif(null), 3500);
+  };
+
+  // ── FOURSOME HELPERS ─────────────────────────────────────────────────────
+  const createFoursome = async (name, memberIds) => {
+    const id = Date.now().toString();
+    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "foursomes", id), {
+      id, name, memberIds, createdAt: Date.now(), createdBy: activePlayer || "anonymous"
+    });
+    notify(`Foursome "${name}" created! ⛳`);
+    return id;
+  };
+
+  const createGroupBet = async (bet) => {
+    const id = Date.now().toString();
+    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "group_bets", id), {
+      id, ...bet, createdAt: Date.now(), settled: false, results: {}
+    });
+    notify("Bet added! 💰");
+  };
+
+  const settleCtp = async (betId, winnerId) => {
+    await updateDoc(doc(db, "tournaments", TOURNAMENT_ID, "group_bets", betId), {
+      settled: true, winnerId, settledAt: Date.now()
+    });
+    notify("CTP winner recorded! 🎯");
+  };
+
+  // Calculate who owes who for a group of bets
+  const calcSettlement = (bets, playerIds) => {
+    const balances = {};
+    playerIds.forEach(id => { balances[id] = 0; });
+
+    bets.forEach(bet => {
+      if (!bet.settled && bet.type !== "ctp") return;
+      const amount = parseFloat(bet.amount) || 0;
+      const participants = bet.playerIds || playerIds;
+
+      if (bet.type === "ctp") {
+        if (!bet.winnerId) return;
+        // Each loser pays winner
+        participants.filter(id => id !== bet.winnerId).forEach(lid => {
+          balances[bet.winnerId] = (balances[bet.winnerId] || 0) + amount;
+          balances[lid] = (balances[lid] || 0) - amount;
+        });
+      } else {
+        // front9, back9, fullround — net or gross
+        const winner = determineRoundWinner(bet, participants);
+        if (!winner) return;
+        participants.filter(id => id !== winner).forEach(lid => {
+          balances[winner] = (balances[winner] || 0) + amount;
+          balances[lid] = (balances[lid] || 0) - amount;
+        });
+      }
+    });
+    return balances;
+  };
+
+  const determineRoundWinner = (bet, participantIds) => {
+    const scoreType = bet.scoreType || "net"; // net | gross
+    const holeRange = bet.type === "front9" ? [0,9] : bet.type === "back9" ? [9,18] : [0,18];
+    let best = null, bestScore = Infinity;
+    participantIds.forEach(pid => {
+      const p = players.find(pl => pl.id === pid);
+      if (!p) return;
+      const holes = p.scores.slice(holeRange[0], holeRange[1]);
+      const played = holes.filter(Boolean);
+      if (played.length < (holeRange[1] - holeRange[0])) return; // not finished yet
+      const gross = played.reduce((a,b) => a+b, 0);
+      let strokes = 0;
+      if (scoreType === "net") {
+        holes.forEach((s, hi) => {
+          const holeIdx = holeRange[0] + hi;
+          if (HCP_STROKES[holeIdx] <= p.handicap) strokes++;
+          if (p.handicap > 18 && HCP_STROKES[holeIdx] <= p.handicap - 18) strokes++;
+        });
+      }
+      const score = gross - strokes;
+      if (score < bestScore) { bestScore = score; best = pid; }
+    });
+    return best;
   };
 
   const pars  = (Array.isArray(course?.par)   && course.par.length===18)  ? course.par   : DEFAULT_PAR;
@@ -1581,6 +1678,481 @@ function AppInner() {
     );
   };
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // FOURSOME + GROUP BETS VIEW
+  // ══════════════════════════════════════════════════════════════════════════
+  const FoursomeView = () => {
+    const [step, setStep] = React.useState("list"); // list | create | detail | addbet
+    const [gName, setGName] = React.useState("");
+    const [gMembers, setGMembers] = React.useState([]); // selected player ids
+    const [detailGroup, setDetailGroup] = React.useState(null);
+
+    // Bet form state
+    const [betType, setBetType] = React.useState("fullround");
+    const [betScore, setBetScore] = React.useState("net");
+    const [betAmount, setBetAmount] = React.useState("");
+    const [betPlayers, setBetPlayers] = React.useState([]);
+    const [betHole, setBetHole] = React.useState("");
+    const [betErr, setBetErr] = React.useState("");
+
+    const par3s = pars.map((p,i) => p===3 ? i : -1).filter(i => i !== -1);
+    const myPlayer = activePlayer ? players.find(p => p.id === activePlayer) : null;
+
+    const getPlayer = id => players.find(p => p.id === id);
+
+    const groupBetsFor = (group) => groupBets.filter(b =>
+      b.foursomeId === group.id || group.memberIds.every(id => (b.playerIds||[]).includes(id))
+    );
+
+    const toggleMember = id => {
+      setGMembers(prev => prev.includes(id) ? prev.filter(x=>x!==id) : prev.length < 4 ? [...prev, id] : prev);
+    };
+
+    const handleCreate = async () => {
+      if (!gName.trim()) return;
+      if (gMembers.length < 2) return;
+      await createFoursome(gName.trim(), gMembers);
+      setGName(""); setGMembers([]); setStep("list");
+    };
+
+    const handleAddBet = async () => {
+      setBetErr("");
+      if (!betAmount || isNaN(parseFloat(betAmount))) { setBetErr("Enter a dollar amount."); return; }
+      if (betPlayers.length < 2) { setBetErr("Select at least 2 players."); return; }
+      if (betType === "ctp" && betHole === "") { setBetErr("Select a hole."); return; }
+      await createGroupBet({
+        foursomeId: detailGroup?.id || null,
+        playerIds: betPlayers,
+        type: betType,
+        scoreType: betScore,
+        amount: parseFloat(betAmount),
+        hole: betType === "ctp" ? parseInt(betHole) : null,
+        label: betType === "ctp"
+          ? `CTP · Hole ${parseInt(betHole)+1}`
+          : betType === "front9" ? `Front 9 · ${betScore}`
+          : betType === "back9" ? `Back 9 · ${betScore}`
+          : `Full Round · ${betScore}`,
+      });
+      setBetAmount(""); setBetPlayers([]); setBetHole(""); setStep("detail");
+    };
+
+    const scoreColor = score => score < 0 ? "var(--green-bright)" : score > 0 ? "var(--red)" : "var(--text)";
+
+    const getGroupScore = (pid, type, scoreType) => {
+      const p = getPlayer(pid);
+      if (!p) return null;
+      const range = type === "front9" ? [0,9] : type === "back9" ? [9,18] : [0,18];
+      const holes = p.scores.slice(range[0], range[1]);
+      if (!holes.some(Boolean)) return null;
+      const gross = holes.filter(Boolean).reduce((a,b)=>a+b,0);
+      if (scoreType === "gross") return gross;
+      let strokes = 0;
+      holes.forEach((s, hi) => {
+        if (!s) return;
+        const holeIdx = range[0] + hi;
+        if (HCP_STROKES[holeIdx] <= p.handicap) strokes++;
+        if (p.handicap > 18 && HCP_STROKES[holeIdx] <= p.handicap - 18) strokes++;
+      });
+      return gross - strokes;
+    };
+
+    const thruRange = (pid, type) => {
+      const p = getPlayer(pid);
+      if (!p) return 0;
+      const range = type === "front9" ? [0,9] : type === "back9" ? [9,18] : [0,18];
+      return p.scores.slice(range[0], range[1]).filter(Boolean).length;
+    };
+
+    // Render bet card
+    const BetCard = ({ bet }) => {
+      const pids = bet.playerIds || [];
+      const isFinished = type => pids.every(pid => thruRange(pid, type) === (type==="fullround"?18:9));
+      const winner = bet.type !== "ctp" ? determineRoundWinner(bet, pids) : bet.winnerId;
+      const winnerName = winner ? getPlayer(winner)?.name : null;
+      const canSettle = bet.type === "ctp" && !bet.settled && activePlayer && pids.includes(activePlayer);
+
+      return (
+        <div style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:8,padding:"14px 16px",marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div>
+              <span style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"var(--gold)"}}>{bet.label}</span>
+              <span style={{fontSize:11,color:"var(--text3)",marginLeft:8}}>${bet.amount}/player</span>
+            </div>
+            {(bet.settled || isFinished(bet.type)) && winnerName && (
+              <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--green)",border:"1px solid var(--green-dim)",borderRadius:3,padding:"2px 8px"}}>
+                🏆 {winnerName}
+              </span>
+            )}
+          </div>
+
+          {/* Player scores for this bet */}
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:bet.type==="ctp"?10:0}}>
+            {pids.map(pid => {
+              const p = getPlayer(pid);
+              if (!p) return null;
+              const score = bet.type !== "ctp" ? getGroupScore(pid, bet.type, bet.scoreType) : null;
+              const thru = bet.type !== "ctp" ? thruRange(pid, bet.type) : null;
+              const isWinner = winner === pid;
+              return (
+                <div key={pid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                  padding:"6px 10px",background:isWinner?"#0a1a0a":"transparent",
+                  border:isWinner?"1px solid var(--green-dim)":"1px solid transparent",borderRadius:4}}>
+                  <span style={{fontSize:14,color:isWinner?"var(--green)":"var(--text2)",fontWeight:isWinner?600:400}}>{p.name}</span>
+                  {bet.type !== "ctp" ? (
+                    <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                      <span style={{fontSize:11,color:"var(--text3)"}}>
+                        {thru === (bet.type==="fullround"?18:9) ? "F" : `Thru ${thru||"—"}`}
+                      </span>
+                      <span style={{fontFamily:"'DM Mono'",fontSize:16,fontWeight:700,
+                        color:score!==null?scoreColor(score - (bet.scoreType==="net"?(bet.type==="fullround"?p.handicap:Math.round(p.handicap/2)):0)):"var(--text3)"}}>
+                        {score !== null ? score : "—"}
+                      </span>
+                    </div>
+                  ) : (
+                    canSettle && !bet.settled ? (
+                      <button onClick={()=>settleCtp(bet.id, pid)}
+                        style={{fontSize:11,fontFamily:"'Bebas Neue'",letterSpacing:2,padding:"4px 12px",
+                          background:"transparent",border:"1px solid var(--gold-dim)",color:"var(--gold)",
+                          borderRadius:3,cursor:"pointer"}}>
+                        SET WINNER
+                      </button>
+                    ) : (
+                      <span style={{fontSize:12,color:isWinner?"var(--green)":"var(--text3)"}}>
+                        {isWinner?"🎯 Winner":"—"}
+                      </span>
+                    )
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    // Settlement summary
+    const SettlementSummary = ({ bets, pids }) => {
+      const balances = calcSettlement(bets, pids);
+      const entries = Object.entries(balances).filter(([,v]) => v !== 0);
+      if (!entries.length) return null;
+
+      // Build "X owes Y $Z" statements
+      const owed = [];
+      const pos = entries.filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+      const neg = entries.filter(([,v])=>v<0).sort((a,b)=>a[1]-b[1]);
+      neg.forEach(([lid, lval]) => {
+        let remaining = Math.abs(lval);
+        pos.forEach(([wid, wval]) => {
+          if (remaining <= 0) return;
+          const amt = Math.min(remaining, wval);
+          if (amt > 0) {
+            owed.push({ from: lid, to: wid, amount: amt });
+            remaining -= amt;
+          }
+        });
+      });
+
+      return (
+        <div style={{background:"#0a1a0a",border:"1px solid var(--green-dim)",borderRadius:8,padding:"14px 16px",marginTop:16}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:10}}>── SETTLEMENT</div>
+          {owed.map((o,i) => (
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+              padding:"8px 0",borderBottom:i<owed.length-1?"1px solid var(--border)":"none"}}>
+              <span style={{fontSize:14,color:"var(--text2)"}}>
+                <span style={{color:"var(--red)"}}>{getPlayer(o.from)?.name}</span>
+                <span style={{color:"var(--text3)"}}> owes </span>
+                <span style={{color:"var(--green)"}}>{getPlayer(o.to)?.name}</span>
+              </span>
+              <span style={{fontFamily:"'DM Mono'",fontSize:18,fontWeight:700,color:"var(--gold)"}}>${o.amount.toFixed(0)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    // ── LIST VIEW
+    if (step === "list") return (
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)"}}>
+            ── {foursomes.length} GROUP{foursomes.length!==1?"S":""} ACTIVE
+          </div>
+          <button className="btn-gold" style={{fontSize:12,padding:"8px 18px",letterSpacing:2}}
+            onClick={()=>setStep("create")}>+ CREATE GROUP</button>
+        </div>
+
+        {foursomes.length === 0 && (
+          <div style={{padding:"40px 20px",textAlign:"center",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8}}>
+            <div style={{fontSize:36,marginBottom:12}}>🤝</div>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,marginBottom:8}}>NO GROUPS YET</div>
+            <div style={{fontSize:13,color:"var(--text3)",marginBottom:16}}>Create a group with your foursome to track bets and scores together.</div>
+            <button className="btn-gold" style={{fontSize:12,padding:"10px 24px"}} onClick={()=>setStep("create")}>CREATE GROUP →</button>
+          </div>
+        )}
+
+        {foursomes.map(group => {
+          const bets = groupBetsFor(group);
+          const balances = calcSettlement(bets, group.memberIds);
+          const myBalance = activePlayer ? balances[activePlayer] : null;
+          return (
+            <div key={group.id}
+              style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:"16px 20px",marginBottom:12,cursor:"pointer"}}
+              onClick={()=>{ setDetailGroup(group); setStep("detail"); }}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div>
+                  <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:1,color:"var(--text)"}}>{group.name}</div>
+                  <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>
+                    {group.memberIds.map(id=>getPlayer(id)?.name||"?").join(" · ")}
+                  </div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:11,color:"var(--text3)"}}>{bets.length} bet{bets.length!==1?"s":""}</div>
+                  {myBalance !== null && myBalance !== 0 && (
+                    <div style={{fontFamily:"'DM Mono'",fontSize:14,fontWeight:700,
+                      color:myBalance>0?"var(--green)":myBalance<0?"var(--red)":"var(--text)",marginTop:4}}>
+                      {myBalance>0?`+$${myBalance}`:`-$${Math.abs(myBalance)}`}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {group.memberIds.map(id => {
+                  const p = getPlayer(id);
+                  const thru = p ? holesPlayed(p) : 0;
+                  return p ? (
+                    <span key={id} style={{fontSize:11,color:"var(--text2)",background:"var(--bg3)",
+                      border:"1px solid var(--border)",borderRadius:4,padding:"3px 8px"}}>
+                      {p.name.split(" ")[0]} {thru===18?"✓":`(${thru})`}
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Cross-group bets — bets not tied to a specific group */}
+        {groupBets.filter(b => !b.foursomeId && activePlayer && (b.playerIds||[]).includes(activePlayer)).length > 0 && (
+          <div style={{marginTop:24}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:12}}>── MY SOLO BETS</div>
+            {groupBets.filter(b => !b.foursomeId && activePlayer && (b.playerIds||[]).includes(activePlayer)).map(bet => (
+              <BetCard key={bet.id} bet={bet}/>
+            ))}
+          </div>
+        )}
+
+        {/* Add standalone bet */}
+        {activePlayer && (
+          <div style={{marginTop:20,textAlign:"center"}}>
+            <button className="btn-ghost" style={{fontSize:11,padding:"8px 20px",letterSpacing:2}}
+              onClick={()=>{ setDetailGroup(null); setBetPlayers([]); setStep("addbet"); }}>
+              + ADD SOLO BET (any 2 players)
+            </button>
+          </div>
+        )}
+      </div>
+    );
+
+    // ── CREATE GROUP
+    if (step === "create") return (
+      <div style={{maxWidth:460,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
+          <button onClick={()=>setStep("list")} style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2}}>CREATE GROUP</div>
+        </div>
+        <div className="card" style={{padding:24,display:"flex",flexDirection:"column",gap:16}}>
+          <div>
+            <div className="section-label">GROUP NAME</div>
+            <input value={gName} onChange={e=>setGName(e.target.value)} placeholder="e.g. Saturday Foursome" style={{width:"100%"}}/>
+          </div>
+          <div>
+            <div className="section-label" style={{marginBottom:8}}>SELECT PLAYERS ({gMembers.length}/4)</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:280,overflowY:"auto"}}>
+              {players.filter(p=>p.memberType!=="amateur").map(p => {
+                const selected = gMembers.includes(p.id);
+                return (
+                  <div key={p.id}
+                    onClick={()=>toggleMember(p.id)}
+                    style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                      padding:"10px 14px",borderRadius:6,cursor:"pointer",
+                      background:selected?"#0a1a0a":"var(--bg3)",
+                      border:`1px solid ${selected?"var(--green)":"var(--border)"}`}}>
+                    <span style={{fontSize:14,color:selected?"var(--green)":"var(--text2)"}}>{p.name}</span>
+                    <span style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <button className="btn-gold" style={{width:"100%",padding:12,fontSize:14}}
+            onClick={handleCreate} disabled={!gName.trim()||gMembers.length<2}>
+            CREATE GROUP →
+          </button>
+        </div>
+      </div>
+    );
+
+    // ── GROUP DETAIL
+    if (step === "detail" && detailGroup) {
+      const bets = groupBetsFor(detailGroup);
+      const allPids = detailGroup.memberIds;
+      return (
+        <div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+            <button onClick={()=>setStep("list")} style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
+            <div>
+              <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2}}>{detailGroup.name}</div>
+              <div style={{fontSize:12,color:"var(--text3)"}}>{allPids.map(id=>getPlayer(id)?.name||"?").join(" · ")}</div>
+            </div>
+          </div>
+
+          {/* Live scores for group */}
+          <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,overflow:"hidden",marginBottom:20}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 60px 70px 70px 60px",background:"var(--bg3)",
+              padding:"8px 14px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
+              <span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span>
+              <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>NET</span>
+              <span style={{textAlign:"center"}}>HCP</span>
+            </div>
+            {allPids.map((pid,idx) => {
+              const p = getPlayer(pid);
+              if (!p) return null;
+              const net = calcNet(p, pars), gross = calcGrossToPar(p, pars), thru = holesPlayed(p);
+              return (
+                <div key={pid} style={{display:"grid",gridTemplateColumns:"1fr 60px 70px 70px 60px",
+                  padding:"12px 14px",borderBottom:"1px solid var(--border)",
+                  borderLeft:idx===0?"3px solid var(--gold)":"3px solid transparent"}}>
+                  <div style={{fontSize:15,fontWeight:600,color:"var(--text)"}}>{p.name}</div>
+                  <div style={{textAlign:"center",fontSize:14,color:thru===18?"var(--green)":"var(--text)"}}>{thru===18?"F":thru||"—"}</div>
+                  <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,color:"var(--text3)"}}>{toPM(gross)}</div>
+                  <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:16,fontWeight:700,
+                    color:net<0?"var(--green-bright)":net>0?"var(--amber)":"var(--text)"}}>{toPM(net)}</div>
+                  <div style={{textAlign:"center",fontSize:13,color:"var(--text3)"}}>{p.handicap}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bets */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)"}}>── BETS ({bets.length})</div>
+            <button className="btn-gold" style={{fontSize:11,padding:"7px 16px",letterSpacing:2}}
+              onClick={()=>{ setBetPlayers([...allPids]); setStep("addbet"); }}>+ ADD BET</button>
+          </div>
+
+          {bets.length === 0 && (
+            <div style={{padding:"24px",textAlign:"center",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,marginBottom:16}}>
+              <div style={{fontSize:13,color:"var(--text3)"}}>No bets yet. Add one to get started.</div>
+            </div>
+          )}
+          {bets.map(bet => <BetCard key={bet.id} bet={bet}/>)}
+
+          {/* Settlement */}
+          {bets.length > 0 && <SettlementSummary bets={bets} pids={allPids}/>}
+        </div>
+      );
+    }
+
+    // ── ADD BET
+    if (step === "addbet") return (
+      <div style={{maxWidth:460,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
+          <button onClick={()=>setStep(detailGroup?"detail":"list")} style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
+          <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2}}>ADD BET</div>
+        </div>
+        <div className="card" style={{padding:24,display:"flex",flexDirection:"column",gap:16}}>
+
+          {/* Bet type */}
+          <div>
+            <div className="section-label" style={{marginBottom:8}}>BET TYPE</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              {[["fullround","Full Round"],["front9","Front 9"],["back9","Back 9"],["ctp","Closest to Pin"]].map(([val,label])=>(
+                <button key={val} onClick={()=>setBetType(val)}
+                  style={{padding:"10px 8px",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,
+                    background:betType===val?"var(--green-dim)":"var(--bg3)",
+                    border:`1px solid ${betType===val?"var(--green)":"var(--border)"}`,
+                    color:betType===val?"var(--green)":"var(--text2)",borderRadius:6,cursor:"pointer"}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Score type — not for CTP */}
+          {betType !== "ctp" && (
+            <div>
+              <div className="section-label" style={{marginBottom:8}}>SCORE TYPE</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {[["net","Net"],["gross","Gross"]].map(([val,label])=>(
+                  <button key={val} onClick={()=>setBetScore(val)}
+                    style={{padding:"10px",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,
+                      background:betScore===val?"#0a1a0a":"var(--bg3)",
+                      border:`1px solid ${betScore===val?"var(--gold)":"var(--border)"}`,
+                      color:betScore===val?"var(--gold)":"var(--text2)",borderRadius:6,cursor:"pointer"}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hole selector for CTP */}
+          {betType === "ctp" && (
+            <div>
+              <div className="section-label" style={{marginBottom:8}}>PAR 3 HOLE</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {par3s.map(hi => (
+                  <button key={hi} onClick={()=>setBetHole(hi.toString())}
+                    style={{width:44,height:44,fontFamily:"'Bebas Neue'",fontSize:16,
+                      background:betHole===hi.toString()?"var(--gold)":"var(--bg3)",
+                      border:`1px solid ${betHole===hi.toString()?"var(--gold)":"var(--border)"}`,
+                      color:betHole===hi.toString()?"#060a06":"var(--text2)",borderRadius:6,cursor:"pointer"}}>
+                    {hi+1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Dollar amount */}
+          <div>
+            <div className="section-label">AMOUNT PER PLAYER ($)</div>
+            <input type="number" value={betAmount} onChange={e=>setBetAmount(e.target.value)}
+              placeholder="e.g. 5" min="1" style={{width:"100%",fontSize:18,textAlign:"center"}}/>
+          </div>
+
+          {/* Player selection */}
+          <div>
+            <div className="section-label" style={{marginBottom:8}}>PLAYERS IN BET ({betPlayers.length} selected)</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:240,overflowY:"auto"}}>
+              {players.filter(p=>p.memberType!=="amateur").map(p => {
+                const sel = betPlayers.includes(p.id);
+                return (
+                  <div key={p.id}
+                    onClick={()=>setBetPlayers(prev=>sel?prev.filter(x=>x!==p.id):[...prev,p.id])}
+                    style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                      padding:"9px 14px",borderRadius:6,cursor:"pointer",
+                      background:sel?"#0a1200":"var(--bg3)",
+                      border:`1px solid ${sel?"var(--gold)":"var(--border)"}`}}>
+                    <span style={{fontSize:14,color:sel?"var(--gold)":"var(--text2)"}}>{p.name}</span>
+                    <span style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {betErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"10px 14px",borderRadius:4}}>{betErr}</div>}
+          <button className="btn-gold" style={{width:"100%",padding:13,fontSize:14}} onClick={handleAddBet}>
+            ADD BET →
+          </button>
+        </div>
+      </div>
+    );
+
+    return null;
+  };
+
   const Leaderboard = () => {
     const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
     const oneOffPlayers = activeOneOff
@@ -1606,6 +2178,22 @@ function AppInner() {
 
     return (
       <div className="fade-up">
+        {/* ── Sub tabs: Individual / Groups */}
+        <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:"1px solid var(--border)"}}>
+          {[["individual","👤 INDIVIDUAL"],["groups","🤝 GROUPS"]].map(([val,label])=>(
+            <div key={val}
+              onClick={()=>setLbTab(val)}
+              style={{padding:"10px 20px",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,cursor:"pointer",
+                color:lbTab===val?"var(--gold)":"var(--text3)",
+                borderBottom:lbTab===val?"2px solid var(--gold)":"2px solid transparent",
+                marginBottom:-1,transition:"all 0.15s"}}>
+              {label}
+            </div>
+          ))}
+        </div>
+
+        {lbTab === "groups" && <FoursomeView/>}
+        {lbTab === "individual" && <>
         {/* ── One-Off Tournament Live Banner */}
         {activeOneOff && (
           <div style={{marginBottom:28}}>
@@ -1676,8 +2264,9 @@ function AppInner() {
           </div>
         )}
 
+        </>}
         {/* Amateurs section */}
-        {players.filter(p=>p.memberType==="amateur").length > 0 && (
+        {lbTab === "individual" && players.filter(p=>p.memberType==="amateur").length > 0 && (
           <div style={{marginTop:32}}>
             <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
               <span>── AMATEUR MEMBERS</span>
@@ -2566,14 +3155,21 @@ function AppInner() {
   // ══════════════════════════════════════════════════════════════════════════
   // ROOT RENDER
  const NAV_PRIMARY = [
-  ["leaderboard","🏆 LEADERBOARD"],
-  ["tournament","⛳ TOURNAMENTS"],
-  ["season","🌟 STANDINGS"],
-  ["rules","📋 RULES"],
-  ["course","🗺 COURSE"],
-  ["handicap","🏅 HANDICAPS"],
-];
-  const NAV_MORE = [];
+    ["leaderboard","🏆 LEADERBOARD"],
+    ["tournament","⛳ TOURNAMENTS"],
+    ["season","🌟 STANDINGS"],
+    ["rules","📋 RULES"],
+    ["course","🗺 COURSE"],
+    ["handicap","🏅 HANDICAPS"],
+  ];
+  const NAV_MORE = [
+    ["register","✍ REGISTER"],
+    ["amateurs","🏌 AMATEURS"],
+    ["login","🔑 LOGIN"],
+    ["sidebets","🤝 SIDEBETS"],
+    ["history","📖 HISTORY"],
+    ["admin","⚙ ADMIN"],
+  ];
   const NAV = [...NAV_PRIMARY];
   const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen==="tournament-scores"?"tournament":screen==="amateur-register"?"amateurs":screen;
 
@@ -2632,6 +3228,31 @@ function AppInner() {
                 {label}
               </div>
             ))}
+            {/* MORE dropdown */}
+            <div style={{position:"relative",flexShrink:0}}>
+              <div className={`nav-pill ${NAV_MORE.some(([v])=>v===activeNav)?"active":""}`}
+                onClick={()=>setMoreOpen(v=>!v)}
+                style={{userSelect:"none"}}>
+                ··· MORE
+              </div>
+              {moreOpen && (
+                <div style={{position:"absolute",top:"100%",right:0,background:"var(--bg2)",
+                  border:"1px solid var(--border2)",borderRadius:8,zIndex:100,minWidth:180,
+                  boxShadow:"0 8px 32px #000a",overflow:"hidden"}}
+                  onMouseLeave={()=>setMoreOpen(false)}>
+                  {NAV_MORE.map(([val,label])=>(
+                    <div key={val}
+                      onClick={()=>{ setMoreOpen(false); if(val==="login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}
+                      style={{padding:"12px 18px",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:2,
+                        color:activeNav===val?"var(--gold)":"var(--text2)",cursor:"pointer",
+                        background:activeNav===val?"var(--bg3)":"transparent",
+                        borderBottom:"1px solid var(--border)"}}>
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
