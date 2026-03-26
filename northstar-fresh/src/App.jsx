@@ -3240,8 +3240,6 @@ function AppInner() {
     ["rules","📋 RULES"],
     ["course","🗺 COURSE"],
     ["handicap","🏅 HANDICAPS"],
-  ];
-  const NAV_MORE = [
     ["register","✍ REGISTER"],
     ["amateurs","🏌 AMATEURS"],
     ["login","🔑 LOGIN"],
@@ -3249,6 +3247,7 @@ function AppInner() {
     ["history","📖 HISTORY"],
     ["admin","⚙ ADMIN"],
   ];
+  const NAV_MORE = [];
   const NAV = [...NAV_PRIMARY];
   const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen==="tournament-scores"?"tournament":screen==="amateur-register"?"amateurs":screen;
 
@@ -3307,33 +3306,7 @@ function AppInner() {
                 {label}
               </div>
             ))}
-            {/* MORE dropdown */}
-            <div style={{position:"relative",flexShrink:0}}>
-              <div className={`nav-pill ${NAV_MORE.some(([v])=>v===activeNav)?"active":""}`}
-                onClick={(e)=>{ e.stopPropagation(); setMoreOpen(v=>!v); }}
-                style={{userSelect:"none"}}>
-                ··· MORE {moreOpen?"▲":"▼"}
-              </div>
-              {moreOpen && (
-                <>
-                  <div style={{position:"fixed",inset:0,zIndex:99}} onClick={()=>setMoreOpen(false)}/>
-                  <div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:"var(--bg2)",
-                    border:"1px solid var(--border2)",borderRadius:8,zIndex:100,minWidth:200,
-                    boxShadow:"0 8px 32px #000c",overflow:"hidden"}}>
-                  {NAV_MORE.map(([val,label])=>(
-                    <div key={val}
-                      onClick={(e)=>{ e.stopPropagation(); setMoreOpen(false); if(val==="login"&&activePlayer)setScreen("my-scores"); else setScreen(val); }}
-                      style={{padding:"12px 18px",fontSize:13,fontFamily:"'Bebas Neue'",letterSpacing:2,
-                        color:activeNav===val?"var(--gold)":"var(--text2)",cursor:"pointer",
-                        background:activeNav===val?"var(--bg3)":"transparent",
-                        borderBottom:"1px solid var(--border)"}}>
-                      {label}
-                    </div>
-                  ))}
-                  </div>
-                </>
-              )}
-            </div>
+
           </div>
         </div>
       </div>
