@@ -3287,6 +3287,7 @@ function AppInner() {
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
               <button className="btn-ghost btn-sm" onClick={()=>{ setRegSuccess(false); setRegError(""); setScreen("register"); }}>JOIN / REGISTER</button>
+              <button className="btn-ghost btn-sm" onClick={()=>setScreen("admin")} style={{fontSize:11,letterSpacing:1}}>⚙ ADMIN</button>
               <button className="btn-gold btn-sm" style={{display:"flex",alignItems:"center",gap:6}} onClick={()=>setScreen(activePlayer?"my-scores":"my-scores-login")}>
                 {activePlayer ? <><span style={{fontSize:10,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{players.find(p=>p.id===activePlayer)?.name?.split(" ")[0]?.toUpperCase()}</span><span> ✏️</span></> : <>✏️ LOG IN</>}
               </button>
