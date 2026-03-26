@@ -1095,12 +1095,12 @@ function AppInner() {
       snap => setFoursomes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
     // Listen to group bets
-    const unsub7 = onSnapshot(
+    const unsub8 = onSnapshot(
       collection(db, "tournaments", TOURNAMENT_ID, "group_bets"),
       snap => setGroupBets(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
 
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); };
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); };
   }, []);
 
   const notify = (msg, type="success") => {
