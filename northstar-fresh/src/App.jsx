@@ -2827,12 +2827,9 @@ function AppInner() {
     ["rules","📋 RULES"],
     ["course","🗺 COURSE"],
     ["handicap","🏅 HANDICAPS"],
-    ["register","✍ REGISTER"],
     ["amateurs","🏌 AMATEURS"],
-    ["login","🔑 LOGIN"],
     ["sidebets","🤝 SIDEBETS"],
     ["history","📖 HISTORY"],
-    ["admin","⚙ ADMIN"],
   ];
   const NAV_MORE = [];
   const NAV = [...NAV_PRIMARY];
