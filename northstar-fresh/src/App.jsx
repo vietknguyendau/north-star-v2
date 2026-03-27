@@ -1148,6 +1148,12 @@ function AppInner() {
     return id;
   };
 
+  const deleteFoursome = async (id, name) => {
+    if (!window.confirm(`Delete group "${name}"?`)) return;
+    await deleteDoc(doc(db, "tournaments", TOURNAMENT_ID, "foursomes", id));
+    notify("Group deleted.");
+  };
+
   const createGroupBet = async (bet) => {
     const id = Date.now().toString();
     await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "group_bets", id), {
@@ -2030,14 +2036,17 @@ function AppInner() {
           const balances = calcSettlement(bets, group.memberIds);
           const myBalance = activePlayer ? balances[activePlayer] : null;
           return (
-            <div key={group.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:"16px 20px",marginBottom:12,cursor:"pointer"}}
-              onClick={()=>{ setDetailGroup(group); setStep("detail"); }}>
+            <div key={group.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:"16px 20px",marginBottom:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                <div>
+                <div style={{cursor:"pointer",flex:1}} onClick={()=>{ setDetailGroup(group); setStep("detail"); }}>
                   <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:1}}>{group.name}</div>
                   <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{group.memberIds.map(id=>getPlayer(id)?.name||"?").join(" · ")}</div>
                 </div>
-                <div style={{textAlign:"right"}}>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                  <button onClick={(e)=>{ e.stopPropagation(); deleteFoursome(group.id, group.name); }}
+                    style={{fontSize:10,padding:"3px 10px",fontFamily:"'Bebas Neue'",letterSpacing:1,background:"transparent",border:"1px solid #4a1010",color:"var(--red)",borderRadius:3,cursor:"pointer"}}>
+                    ✕ DELETE
+                  </button>
                   <div style={{fontSize:11,color:"var(--text3)"}}>{bets.length} bet{bets.length!==1?"s":""}</div>
                   {myBalance!==null&&myBalance!==0&&<div style={{fontFamily:"'DM Mono'",fontSize:14,fontWeight:700,color:myBalance>0?"var(--green)":"var(--red)",marginTop:4}}>{myBalance>0?`+$${myBalance}`:`-$${Math.abs(myBalance)}`}</div>}
                 </div>
@@ -2094,10 +2103,14 @@ function AppInner() {
         <div>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
             <button onClick={()=>setStep("list")} style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
-            <div>
+            <div style={{flex:1}}>
               <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2}}>{detailGroup.name}</div>
               <div style={{fontSize:12,color:"var(--text3)"}}>{allPids.map(id=>getPlayer(id)?.name||"?").join(" · ")}</div>
             </div>
+            <button onClick={()=>{ deleteFoursome(detailGroup.id, detailGroup.name).then(()=>setStep("list")); }}
+              style={{fontSize:11,padding:"6px 14px",fontFamily:"'Bebas Neue'",letterSpacing:1,background:"transparent",border:"1px solid #4a1010",color:"var(--red)",borderRadius:4,cursor:"pointer"}}>
+              ✕ DELETE GROUP
+            </button>
           </div>
           <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,overflow:"hidden",marginBottom:20}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 60px 70px 70px 60px",background:"var(--bg3)",padding:"8px 14px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
