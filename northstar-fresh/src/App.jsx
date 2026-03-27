@@ -69,14 +69,28 @@ const calcGrossToPar = (player, pars) => {
   return gross - parSum;
 };
 
-const calcNet = (player, pars) => {
+// WHS Course Handicap = Index × (Slope / 113) + (Rating - Par)
+const calcCourseHandicap = (handicapIndex, slope, rating, par) => {
+  const s = parseFloat(slope) || 113;
+  const r = parseFloat(rating) || par;
+  const p = parseInt(par) || 72;
+  return Math.round(handicapIndex * (s / 113) + (r - p));
+};
+
+const calcNet = (player, pars, course) => {
   const last = lastFilledIdx(player.scores);
   if (last < 0) return null;
+  const totalPar = pars.reduce((a,b)=>a+b,0);
+  // Use WHS course handicap if course info available, otherwise use raw index
+  const courseHcp = (course?.slope && course?.rating)
+    ? calcCourseHandicap(player.handicap, course.slope, course.rating, totalPar)
+    : player.handicap;
   let hcpStrokes = 0;
   player.scores.forEach((s, i) => {
     if (s === null) return;
-    if (HCP_STROKES[i] <= player.handicap) hcpStrokes++;
-    if (player.handicap > 18 && HCP_STROKES[i] <= player.handicap - 18) hcpStrokes++;
+    if (HCP_STROKES[i] <= courseHcp) hcpStrokes++;
+    if (courseHcp > 18 && HCP_STROKES[i] <= courseHcp - 18) hcpStrokes++;
+    if (courseHcp > 36 && HCP_STROKES[i] <= courseHcp - 36) hcpStrokes++;
   });
   const gross  = player.scores.slice(0,last+1).filter(s=>s!==null).reduce((a,b)=>a+b,0);
   const parSum = pars.slice(0,last+1).reduce((a,b)=>a+b,0);
@@ -275,12 +289,15 @@ function OneOffCreator({ players, notify, courseLibrary }) {
     const snap = eligible
       .map(p => {
         const gross = p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
+        const snapPar = pars?.reduce((a,b)=>a+b,0)||72;
+        const snapCh = calcCourseHandicap(p.handicap, active?.courseDetails?.slope||113, active?.courseDetails?.rating||snapPar, snapPar);
         let net = 0;
         p.scores.forEach((s,i) => {
           if (!s) return;
           let strokes = 0;
-          if (HCP_S[i] <= p.handicap) strokes++;
-          if (p.handicap > 18 && HCP_S[i] <= p.handicap-18) strokes++;
+          if (HCP_S[i] <= snapCh) strokes++;
+          if (snapCh > 18 && HCP_S[i] <= snapCh-18) strokes++;
+          if (snapCh > 36 && HCP_S[i] <= snapCh-36) strokes++;
           net += s - strokes;
         });
         return { id:p.id, name:p.name, handicap:p.handicap, flight:p.flight, gross, net, scores:[...p.scores] };
@@ -824,39 +841,42 @@ const CtpLeaderboard = ({ ctpBets, pars, players }) => {
 };
 
 // ── Leaderboard Table Component
-const LeaderboardTable = ({ players, pars, scorecardUploads, calcNet, calcGrossToPar, holesPlayed, toPM, setSelectedPid, setScreen }) => (
+const LeaderboardTable = ({ players, pars, scorecardUploads, calcNet, calcGrossToPar, holesPlayed, toPM, setSelectedPid, setScreen, course }) => (
   <div style={{marginBottom:32}}>
     <div className="card" style={{overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"52px 1fr 70px 80px 80px 60px",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
-        <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span><span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>NET</span><span style={{textAlign:"center"}}>HCP</span>
+      <div style={{display:"grid",gridTemplateColumns:"48px 1fr 60px 72px 72px 72px 52px",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
+        <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span>
+        <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>+/- PAR</span>
+        <span style={{textAlign:"center"}}>NET</span><span style={{textAlign:"center"}}>HCP</span>
       </div>
       {players.map((player,idx)=>{
-        const net=calcNet(player,pars), gross=calcGrossToPar(player,pars), thru=holesPlayed(player);
+        const net=calcNet(player,pars,course), gross=calcGrossToPar(player,pars), thru=holesPlayed(player);
+        const rawGross = player.scores.slice(0,thru).filter(Boolean).reduce((a,b)=>a+b,0);
         const lead=idx===0&&net!==null;
         return (
           <div key={player.id} className="player-row"
-            style={{display:"grid",gridTemplateColumns:"52px 1fr 70px 80px 80px 60px",padding:"13px 16px",alignItems:"center",
+            style={{display:"grid",gridTemplateColumns:"48px 1fr 60px 72px 72px 72px 52px",padding:"12px 16px",alignItems:"center",
               borderLeft:lead?"3px solid var(--gold)":"3px solid transparent"}}
             onClick={()=>{ setSelectedPid(player.id); setScreen("scorecard"); }}>
             <span style={{fontFamily:"'Bebas Neue'",fontSize:20,color:idx===0?"var(--gold)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
               {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
             </span>
             <div>
-              <div style={{fontSize:17,color:lead?"var(--text)":"var(--text2)",fontWeight:600,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+              <div style={{fontSize:15,color:lead?"var(--text)":"var(--text2)",fontWeight:600,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 {player.name}
                 {holesPlayed(player)>0 && !scorecardUploads[player.id]?.url && <span style={{fontSize:9,fontFamily:"'Bebas Neue'",letterSpacing:1,color:"var(--amber)",border:"1px solid var(--amber)",borderRadius:2,padding:"1px 4px"}}>UNVERIFIED</span>}
                 {scorecardUploads[player.id]?.url && !scorecardUploads[player.id]?.verified && <span style={{fontSize:9,fontFamily:"'Bebas Neue'",letterSpacing:1,color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:2,padding:"1px 4px"}}>PENDING ⏳</span>}
                 {scorecardUploads[player.id]?.verified && <span style={{fontSize:9,fontFamily:"'Bebas Neue'",letterSpacing:1,color:"var(--green)",border:"1px solid var(--green-dim)",borderRadius:2,padding:"1px 4px"}}>✓ VERIFIED</span>}
               </div>
-              <div style={{fontSize:11,color:"var(--text3)",letterSpacing:1}}></div>
+              <div style={{fontSize:10,color:"var(--text3)"}}>{`HCP ${player.handicap}`}</div>
             </div>
             <div style={{textAlign:"center"}}>
-              <div style={{fontSize:15,color:thru===18?"var(--green)":"var(--text)"}}>{thru===18?"F":thru||"—"}</div>
-              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1}}>{thru===18?"FINAL":thru>0?"THRU":"—"}</div>
+              <div style={{fontSize:14,color:thru===18?"var(--green)":"var(--text)"}}>{thru===18?"F":thru||"—"}</div>
+              <div style={{fontSize:9,color:"var(--text3)",letterSpacing:1}}>{thru===18?"FINAL":thru>0?"THRU":"—"}</div>
             </div>
-            <div style={{textAlign:"center",fontSize:17,color:gross>0?"var(--amber)":gross<0?"var(--gold)":"var(--text)"}}>{toPM(gross)}</div>
-            <div style={{textAlign:"center",fontSize:22,fontWeight:700,color:net<0?"var(--green-bright)":net>0?"var(--amber)":"var(--text)"}}>{toPM(net)}</div>
-            <div style={{textAlign:"center",fontSize:13,color:"var(--text3)"}}>{player.handicap}</div>
+            <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:15,color:"var(--text3)"}}>{rawGross||"—"}</div>
+            <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:15,color:gross>0?"var(--amber)":gross<0?"var(--gold)":"var(--text)"}}>{gross!==null?toPM(gross):"—"}</div>
+            <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:18,fontWeight:700,color:net<0?"var(--green-bright)":net>0?"var(--amber)":"var(--text)"}}>{toPM(net)}</div>
           </div>
         );
       })}
@@ -1262,7 +1282,7 @@ function AppInner() {
   const sortedFlight = flight => {
     const base = players.filter(p => p.memberType !== "amateur"); // exclude amateurs from main board
     return [...base].sort((a,b)=>{
-      const an=calcNet(a,pars), bn=calcNet(b,pars);
+      const an=calcNet(a,pars,course), bn=calcNet(b,pars,course);
       if(an===null&&bn===null)return 0;
       if(an===null)return 1; if(bn===null)return -1;
       return an!==bn ? an-bn : holesPlayed(b)-holesPlayed(a);
@@ -1428,11 +1448,14 @@ function AppInner() {
         : players.filter(p=>p.scores?.some(Boolean));
       const rows = joined.map(p=>{
         const gross=p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
+        const totalPar=pars.reduce((a,b)=>a+b,0);
+        const ch = (course?.slope&&course?.rating) ? calcCourseHandicap(p.handicap,course.slope,course.rating,totalPar) : p.handicap;
         let net=0;
         p.scores.forEach((s,i)=>{
           if(!s)return; let str=0;
-          if(HCP_S[i]<=p.handicap)str++;
-          if(p.handicap>18&&HCP_S[i]<=p.handicap-18)str++;
+          if(HCP_S[i]<=ch)str++;
+          if(ch>18&&HCP_S[i]<=ch-18)str++;
+          if(ch>36&&HCP_S[i]<=ch-36)str++;
           net+=s-str;
         });
         return {...p,gross,net,thru:holesPlayed(p)};
@@ -1444,12 +1467,15 @@ function AppInner() {
       );
       return (
         <div style={{borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}>
-          <div style={{display:"grid",gridTemplateColumns:"44px 1fr 52px 68px 68px",background:"var(--bg3)",padding:"8px 14px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
+          <div style={{display:"grid",gridTemplateColumns:"44px 1fr 48px 58px 62px 68px",background:"var(--bg3)",padding:"8px 14px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
             <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span>
-            <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>NET</span>
+            <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>+/-</span><span style={{textAlign:"center"}}>NET</span>
           </div>
-          {rows.map((p,idx)=>(
-            <div key={p.id} style={{display:"grid",gridTemplateColumns:"44px 1fr 52px 68px 68px",padding:"11px 14px",borderBottom:"1px solid var(--border)",
+          {rows.map((p,idx)=>{
+            const parThru = pars.slice(0,p.thru).reduce((a,b)=>a+b,0);
+            const overPar = p.thru>0 ? p.gross - parThru : null;
+            return (
+            <div key={p.id} style={{display:"grid",gridTemplateColumns:"44px 1fr 48px 58px 62px 68px",padding:"11px 14px",borderBottom:"1px solid var(--border)",
               borderLeft:idx===0?"3px solid var(--green)":"3px solid transparent"}}>
               <span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
                 {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
@@ -1460,9 +1486,11 @@ function AppInner() {
               </div>
               <div style={{textAlign:"center",fontSize:14,color:p.thru===18?"var(--green)":"var(--text)"}}>{p.thru===18?"F":p.thru||"—"}</div>
               <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,color:"var(--text3)"}}>{p.gross||"—"}</div>
+              <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,color:overPar>0?"var(--amber)":overPar<0?"var(--gold)":"var(--text)"}}>{overPar!==null?toPM(overPar):"—"}</div>
               <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:16,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{toPM(p.net)}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
       );
     };
@@ -1481,14 +1509,16 @@ function AppInner() {
       const rows = isLive
         ? joined.map(p=>{
             const gross=p.scores?.filter(Boolean).reduce((a,b)=>a+b,0)||0;
+            const totalPar=pars.reduce((a,b)=>a+b,0);
+            const ch=(course?.slope&&course?.rating)?calcCourseHandicap(p.handicap,course.slope,course.rating,totalPar):p.handicap;
             let net=0;
             p.scores?.forEach((s,i)=>{
               if(!s)return; let str=0;
-              if(HCP_S[i]<=p.handicap)str++;
-              if(p.handicap>18&&HCP_S[i]<=p.handicap-18)str++;
+              if(HCP_S[i]<=ch)str++;
+              if(ch>18&&HCP_S[i]<=ch-18)str++;
+              if(ch>36&&HCP_S[i]<=ch-36)str++;
               net+=s-str;
             });
-            return {...p,gross,net,thru:holesPlayed(p),scores:p.scores||Array(18).fill(null)};
           }).sort((a,b)=>a.net-b.net)
         : joined.map(p=>({...p,thru:p.scores?.filter(Boolean).length||18})).sort((a,b)=>a.net-b.net);
 
@@ -1912,6 +1942,7 @@ function AppInner() {
           toPM={toPM}
           setSelectedPid={setSelectedPid}
           setScreen={setScreen}
+          course={course}
         />
         {players.filter(p=>p.memberType!=="amateur").length===0 && (
           <div style={{textAlign:"center",padding:"60px 20px",color:"var(--text3)"}}>
