@@ -346,11 +346,10 @@ function OneOffCreator({ players, notify, courseLibrary }) {
         </div>
       )}
 
-      {/* Setup form — only show when no active tournament */}
-      {!active && (
-        <div className="card" style={{padding:20,marginBottom:16}}>
+      {/* Setup form — always visible to support multiple simultaneous tournaments */}
+      <div className="card" style={{padding:20,marginBottom:16}}>
           <div style={{fontSize:13,color:"var(--text3)",marginBottom:14,lineHeight:1.6}}>
-            Set up a one-off tournament (scramble, charity round, skins game, etc). Hit <strong style={{color:"var(--text)"}}>Start</strong> to clear all scores so players start fresh, then <strong style={{color:"var(--text)"}}>Lock In</strong> when everyone is done.
+            Set up a new tournament. Multiple tournaments can run simultaneously — each gets its own leaderboard.
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
             <div style={{gridColumn:"1/-1"}}>
@@ -410,10 +409,9 @@ function OneOffCreator({ players, notify, courseLibrary }) {
             </div>
           </div>
           <button className="btn-gold" style={{fontSize:14,padding:"12px 28px"}} onClick={startTournament} disabled={starting||!title.trim()}>
-            {starting?"CLEARING SCORES…":"🚀 START TOURNAMENT"}
+            {starting?"STARTING…":"🚀 START TOURNAMENT"}
           </button>
         </div>
-      )}
 
       {/* Saved list */}
       {tourneys.length > 0 && (
