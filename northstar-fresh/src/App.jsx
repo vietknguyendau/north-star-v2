@@ -13,6 +13,10 @@ import {
 import { SKILL_LEVELS, DEFAULT_PAR, DEFAULT_YARDS, HCP_STROKES, TOURNAMENT_ID } from "./constants";
 import { hashPin, toPM, lastFilledIdx, holesPlayed, calcGrossToPar, calcCourseHandicap, calcNet, scoreLabel, scoreClass } from "./lib/scoring";
 import { calcHoleRange } from "./lib/handicap";
+import { useAuth } from "./contexts/AuthContext";
+import { usePlayers } from "./contexts/PlayersContext";
+import { useCourse } from "./contexts/CourseContext";
+import { useTournament } from "./contexts/TournamentContext";
 
 // ── Error Boundary — shows friendly message instead of black screen
 class ErrorBoundary extends React.Component {
@@ -866,28 +870,20 @@ function CourseSearch({ onSelect }) {
 }
 
 function AppInner() {
-  // ── Firebase state ──
-  const [players, setPlayers]   = useState([]);
-  const [course, setCourse]     = useState(null);
-  const [scorecardUploads, setScorecardUploads] = useState({});
-  const [ctpBets, setCtpBets] = useState({});      // { holeIndex: { entries: {playerId: {feet,inche
-  const [activeOneOff, setActiveOneOff] = useState(null);
-  const [activeOnOffs, setActiveOnOffs] = useState([]);
+  // ── Context state (replaces local Firebase state + listeners) ──
+  const { players, loading, syncStatus, setSyncStatus, scorecardUploads } = usePlayers();
+  const { course, setCourse, courseLibrary } = useCourse();
+  const { activeOneOff, activeOnOffs, ctpBets, foursomes, groupBets } = useTournament();
+  const { activePlayer, setActivePlayer, adminUnlocked, setAdminUnlocked } = useAuth();
+
+  // ── UI state ──
   const [moreOpen, setMoreOpen] = useState(false); // mobile nav toggle
-  const [courseLibrary, setCourseLibrary] = useState([]);
-  const [foursomes, setFoursomes] = useState([]);   // foursome groups from Firebase
-  const [groupBets, setGroupBets] = useState([]);   // group bets from Firebase
   const [lbTab, setLbTab] = useState("individual"); // leaderboard sub-tab
   const [showFoursomeModal, setShowFoursomeModal] = useState(false);
   const [showBetModal, setShowBetModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [syncStatus, setSyncStatus] = useState("synced"); // synced | syncing | error
-
-  // ── UI state ──
   const [screen, setScreen]           = useState("leaderboard");
   const [selectedPid, setSelectedPid] = useState(null);
-  const [activePlayer, setActivePlayer] = useState(null);
   const [activeHole, setActiveHole]   = useState(0);
   const [regForm, setRegForm]         = useState({ code:"", name:"", email:"", handicap:"", flight:"Scratch (0-5)", pin:"", pin2:"", leagueCode:"" });
   const [amateurForm, setAmateurForm] = useState({ name:"", email:"", handicap:"", pin:"", pin2:"" });
@@ -896,7 +892,6 @@ function AppInner() {
   const [regError, setRegError]       = useState("");
   const [regSuccess, setRegSuccess]   = useState(false);
   const [showScModal, setShowScModal] = useState(false);
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [pinInput, setPinInput]       = useState("");
   const [pinError, setPinError]       = useState(false);
   const [notif, setNotif]             = useState(null);
@@ -906,97 +901,6 @@ function AppInner() {
   const [pendingPlayer, setPendingPlayer] = useState(null);
   const fileRef = useRef();
   const notifyTimer = useRef(null);
-
-  // ── Firestore listeners ──
-  useEffect(() => {
-    // Listen to players collection
-    const unsub1 = onSnapshot(
-      collection(db, "tournaments", TOURNAMENT_ID, "players"),
-      snap => {
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setPlayers(data);
-        setLoading(false);
-      },
-      err => { console.error(err); setSyncStatus("error"); setLoading(false); }
-    );
-
-    // Listen to course document
-    const unsub2 = onSnapshot(
-      doc(db, "tournaments", TOURNAMENT_ID, "settings", "course"),
-      snap => {
-        if (snap.exists()) {
-          const data = snap.data();
-          // Defensive: ensure par and yards are valid arrays (bad write protection)
-          if (!Array.isArray(data.par) || data.par.length !== 18) data.par = DEFAULT_PAR;
-          if (!Array.isArray(data.yards) || data.yards.length !== 18) data.yards = DEFAULT_YARDS;
-          setCourse(data);
-        } else {
-          // First run — seed default course
-          const defaultCourse = {
-            name:"Keller Golf Course", city:"Maplewood, MN", slope:128, rating:70.4,
-            par: DEFAULT_PAR, yards: DEFAULT_YARDS,
-            description:"A classic Minnesota municipal course winding through mature oaks and wetlands. Tight fairways reward accuracy over distance.",
-            scorecardImage: null, scorecardPdf: null,
-          };
-          setDoc(doc(db, "tournaments", TOURNAMENT_ID, "settings", "course"), defaultCourse);
-          setCourse(defaultCourse);
-        }
-        setLoading(false);
-      }
-    );
-
-    // Listen to scorecard uploads
-    const unsub3 = onSnapshot(
-      collection(db, "tournaments", TOURNAMENT_ID, "scorecard_uploads"),
-      snap => {
-        const d = {};
-        snap.docs.forEach(doc => { d[doc.id] = doc.data(); });
-        setScorecardUploads(d);
-      }
-    );
-
-    // Listen to CTP bets
-    const unsub4 = onSnapshot(
-      collection(db, "tournaments", TOURNAMENT_ID, "ctp_bets"),
-      snap => {
-        const d = {};
-        snap.docs.forEach(doc => { d[doc.id] = doc.data(); });
-        setCtpBets(d);
-      }
-    );
-
-    const unsub5 = onSnapshot(
-      doc(db, "tournaments", TOURNAMENT_ID, "settings", "active_oneoff"),
-      snap => { setActiveOneOff(snap.exists() ? snap.data() : null); }
-    );
-    const unsub5b = onSnapshot(
-      collection(db, "tournaments", TOURNAMENT_ID, "active_tournaments"),
-      snap => {
-        const arr = snap.docs.map(d => ({ id: d.id, ...d.data(), isActive: true }));
-        arr.sort((a,b) => (b.startedAt||0) - (a.startedAt||0));
-        setActiveOnOffs(arr);
-      }
-    );
-
-    // Listen to course library
-    const unsub6 = onSnapshot(
-      collection(db, "tournaments", TOURNAMENT_ID, "course_library"),
-      snap => setCourseLibrary(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>a.name.localeCompare(b.name)))
-    );
-
-    // Listen to foursomes
-    const unsub7 = onSnapshot(
-      collection(db, "tournaments", TOURNAMENT_ID, "foursomes"),
-      snap => setFoursomes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-    // Listen to group bets
-    const unsub8 = onSnapshot(
-      collection(db, "tournaments", TOURNAMENT_ID, "group_bets"),
-      snap => setGroupBets(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub5b(); unsub6(); unsub7(); unsub8(); };
-  }, []);
 
   const notify = (msg, type="success") => {
     clearTimeout(notifyTimer.current);
