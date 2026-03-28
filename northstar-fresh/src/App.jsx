@@ -118,12 +118,14 @@ function PinResetButton({ player, notify }) {
   const save = async () => {
     if (newPin.length !== 4) return;
     setSaving(true);
-    const hash = await hashPin(newPin);
-    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "players", player.id), { pinHash: hash }, { merge: true });
+    try {
+      const hash = await hashPin(newPin);
+      await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "players", player.id), { pinHash: hash }, { merge: true });
+      setOpen(false);
+      setNewPin("");
+      notify(player.name + "'s PIN updated.");
+    } catch(e) { console.error(e); notify("Failed to update PIN — check connection.", "error"); }
     setSaving(false);
-    setOpen(false);
-    setNewPin("");
-    notify(player.name + "'s PIN updated.");
   };
 
   if (!open) return (
@@ -183,21 +185,23 @@ function OneOffCreator({ players, notify, courseLibrary, pars }) {
     if (!title.trim()) { notify("Enter a title before starting.", "error"); return; }
     if (!window.confirm(`Start "${title.trim()}"? Players can join and enter scores immediately.`)) return;
     setStarting(true);
-    const pwHash = password.trim() ? await hashPin(password.trim()) : null;
-    const oneOffId = `oneoff-${Date.now()}`;
-    const tData = {
-      id: oneOffId,
-      title: title.trim(),
-      date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
-      course: course.trim(), notes: notes.trim(), startedAt: Date.now(),
-      courseDetails: courseInfo || null,
-      pwHash, hasPassword: !!password.trim(),
-    };
-    await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",oneOffId), tData);
-    await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), tData);
-    setTitle(""); setDate(""); setCourse2(""); setNotes(""); setCourseInfo(null); setPassword("");
+    try {
+      const pwHash = password.trim() ? await hashPin(password.trim()) : null;
+      const oneOffId = `oneoff-${Date.now()}`;
+      const tData = {
+        id: oneOffId,
+        title: title.trim(),
+        date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+        course: course.trim(), notes: notes.trim(), startedAt: Date.now(),
+        courseDetails: courseInfo || null,
+        pwHash, hasPassword: !!password.trim(),
+      };
+      await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",oneOffId), tData);
+      await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), tData);
+      setTitle(""); setDate(""); setCourse2(""); setNotes(""); setCourseInfo(null); setPassword("");
+      notify(`"${title.trim()}" started! Players can now join and enter scores. 🏌️`);
+    } catch(e) { console.error(e); notify("Failed to start tournament — check connection.", "error"); }
     setStarting(false);
-    notify(`"${title.trim()}" started! Players can now join and enter scores. 🏌️`);
   };
 
   const lockAndSave = async () => {
@@ -219,28 +223,32 @@ function OneOffCreator({ players, notify, courseLibrary, pars }) {
       })
       .sort((a,b) => a.net - b.net);
 
-    const id = `oneoff-${Date.now()}`;
-    await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",id), {
-      id, title: t.title,
-      date: t.date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
-      course: t.course || "", notes: t.notes || "",
-      courseDetails: t.courseDetails || null,
-      snapshot: snap, createdAt: Date.now(),
-    });
-    if (t.id) await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",t.id));
-    await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
-    setTitle(""); setDate(""); setCourse2(""); setNotes(""); setCourseInfo(null);
+    try {
+      const id = `oneoff-${Date.now()}`;
+      await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",id), {
+        id, title: t.title,
+        date: t.date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+        course: t.course || "", notes: t.notes || "",
+        courseDetails: t.courseDetails || null,
+        snapshot: snap, createdAt: Date.now(),
+      });
+      if (t.id) await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",t.id));
+      await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
+      setTitle(""); setDate(""); setCourse2(""); setNotes(""); setCourseInfo(null);
+      notify(`"${t.title}" locked and saved! View it in History. 🏆`);
+    } catch(e) { console.error(e); notify("Failed to save tournament — check connection.", "error"); }
     setSaving(false);
-    notify(`"${t.title}" locked and saved! View it in History. 🏆`);
   };
 
   const cancelActive = async (t) => {
     const tourney = t || active;
     if (!tourney) return;
     if (!window.confirm(`Cancel "${tourney.title}"? It won't be saved.`)) return;
-    if (tourney.id) await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",tourney.id));
-    await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
-    notify("Tournament cancelled.");
+    try {
+      if (tourney.id) await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",tourney.id));
+      await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
+      notify("Tournament cancelled.");
+    } catch(e) { console.error(e); notify("Failed to cancel tournament — check connection.", "error"); }
   };
 
   const remove = async (id, name) => {
@@ -584,13 +592,13 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontSize:11,color:"var(--green)",fontFamily:"'Bebas Neue'",letterSpacing:1}}>✓ VERIFIED · {scorecardUploads[p.id].verifiedAt}</span>
                       <button className="btn-ghost" style={{fontSize:10,padding:"2px 8px",color:"var(--amber)",borderColor:"var(--amber)"}}
-                        onClick={async()=>{ await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"scorecard_uploads",p.id),{...scorecardUploads[p.id],verified:false}); notify("Verification removed."); }}>
+                        onClick={async()=>{ try { await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"scorecard_uploads",p.id),{...scorecardUploads[p.id],verified:false}); notify("Verification removed."); } catch(e) { console.error(e); notify("Failed — check connection.","error"); } }}>
                         UNVERIFY
                       </button>
                     </div>
                   ) : (
                     <button className="btn-gold" style={{fontSize:11,padding:"5px 14px"}}
-                      onClick={async()=>{ await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"scorecard_uploads",p.id),{...scorecardUploads[p.id],verified:true,verifiedAt:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}); notify(`${p.name} verified! ✓`); }}>
+                      onClick={async()=>{ try { await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"scorecard_uploads",p.id),{...scorecardUploads[p.id],verified:true,verifiedAt:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}); notify(`${p.name} verified! ✓`); } catch(e) { console.error(e); notify("Failed — check connection.","error"); } }}>
                       ✓ MARK AS VERIFIED
                     </button>
                   )}
@@ -679,8 +687,10 @@ const CtpDistanceEntry = ({ player, holeIdx, ctpBet, notify }) => {
         }
       }
     };
-    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "ctp_bets", ctpKey), updated);
-    notify("Distance submitted! Good luck 🎯");
+    try {
+      await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "ctp_bets", ctpKey), updated);
+      notify("Distance submitted! Good luck 🎯");
+    } catch(e) { console.error(e); notify("Failed to submit distance — check connection.", "error"); }
     setSaving(false);
   };
 
@@ -956,6 +966,7 @@ function AppInner() {
   const [scorePinError, setScorePinError] = useState("");
   const [pendingPlayer, setPendingPlayer] = useState(null);
   const fileRef = useRef();
+  const notifyTimer = useRef(null);
 
   // ── Firestore listeners ──
   useEffect(() => {
@@ -1049,17 +1060,21 @@ function AppInner() {
   }, []);
 
   const notify = (msg, type="success") => {
+    clearTimeout(notifyTimer.current);
     setNotif({ msg, type });
-    setTimeout(() => setNotif(null), 3500);
+    notifyTimer.current = setTimeout(() => setNotif(null), 3500);
   };
+  useEffect(() => () => clearTimeout(notifyTimer.current), []);
 
   // ── FOURSOME HELPERS ─────────────────────────────────────────────────────
   const createFoursome = async (name, memberIds) => {
     const id = Date.now().toString();
-    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "foursomes", id), {
-      id, name, memberIds, createdAt: Date.now(), createdBy: activePlayer || "anonymous"
-    });
-    notify(`Foursome "${name}" created! ⛳`);
+    try {
+      await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "foursomes", id), {
+        id, name, memberIds, createdAt: Date.now(), createdBy: activePlayer || "anonymous"
+      });
+      notify(`Foursome "${name}" created! ⛳`);
+    } catch(e) { console.error(e); notify("Failed to create foursome — check connection.", "error"); return null; }
     return id;
   };
 
@@ -1071,17 +1086,21 @@ function AppInner() {
 
   const createGroupBet = async (bet) => {
     const id = Date.now().toString();
-    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "group_bets", id), {
-      id, ...bet, createdAt: Date.now(), settled: false, results: {}
-    });
-    notify("Bet added! 💰");
+    try {
+      await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "group_bets", id), {
+        id, ...bet, createdAt: Date.now(), settled: false, results: {}
+      });
+      notify("Bet added! 💰");
+    } catch(e) { console.error(e); notify("Failed to add bet — check connection.", "error"); }
   };
 
   const settleCtp = async (betId, winnerId) => {
-    await updateDoc(doc(db, "tournaments", TOURNAMENT_ID, "group_bets", betId), {
-      settled: true, winnerId, settledAt: Date.now()
-    });
-    notify("CTP winner recorded! 🎯");
+    try {
+      await updateDoc(doc(db, "tournaments", TOURNAMENT_ID, "group_bets", betId), {
+        settled: true, winnerId, settledAt: Date.now()
+      });
+      notify("CTP winner recorded! 🎯");
+    } catch(e) { console.error(e); notify("Failed to record CTP winner — check connection.", "error"); }
   };
 
   // Calculate who owes who for a group of bets
@@ -1136,14 +1155,16 @@ function AppInner() {
 
   // Auto-initialize CTP bets for all par 3s if not already active
   const initCtpBets = async () => {
-    for (const holeIdx of par3Holes) {
-      const key = `hole_${holeIdx}`;
-      if (!ctpBets[key]) {
-        await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "ctp_bets", key), {
-          holeIndex: holeIdx, active: true, entries: {}
-        });
+    try {
+      for (const holeIdx of par3Holes) {
+        const key = `hole_${holeIdx}`;
+        if (!ctpBets[key]) {
+          await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "ctp_bets", key), {
+            holeIndex: holeIdx, active: true, entries: {}
+          });
+        }
       }
-    }
+    } catch(e) { console.error(e); notify("Failed to initialize CTP bets — check connection.", "error"); }
   };
   const yards = (Array.isArray(course?.yards) && course.yards.length===18) ? course.yards : DEFAULT_YARDS;
   const totalPar  = pars.reduce((a,b)=>a+b,0);
@@ -1166,14 +1187,15 @@ function AppInner() {
   };
 
   const saveCourseToLibrary = async (courseData) => {
-    // Use course name as the key (normalized)
     const id = courseData.name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
-    await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "course_library", id), {
-      ...courseData,
-      id,
-      savedAt: Date.now(),
-    });
-    notify(`"${courseData.name}" saved to course library ✓`);
+    try {
+      await setDoc(doc(db, "tournaments", TOURNAMENT_ID, "course_library", id), {
+        ...courseData,
+        id,
+        savedAt: Date.now(),
+      });
+      notify(`"${courseData.name}" saved to course library ✓`);
+    } catch(e) { console.error(e); notify("Failed to save course — check connection.", "error"); }
   };
 
   const saveCourse = async (data) => {
