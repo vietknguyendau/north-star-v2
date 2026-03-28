@@ -44,67 +44,6 @@ const ADMIN_PIN       = process.env.REACT_APP_ADMIN_PIN;
 
 // ─── Helpers (imported from lib/scoring and lib/handicap) ────────────────────
 
-// ─── CSS ─────────────────────────────────────────────────────────────────────
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --bg:#080c08;--bg2:#0c120c;--bg3:#101810;--bg4:#141e14;
-  --border:#1c2a1c;--border2:#243424;
-  --gold:#c8a830;--gold2:#a88020;--gold-dim:#7a6010;
-  --green:#5a9a5a;--green-dim:#3a6a3a;--green-bright:#70c870;
-  --text:#e4dcc8;--text2:#a09880;--text3:#607060;
-  --red:#c04030;--amber:#d07830;
-}
-body{background:var(--bg);color:var(--text);font-family:'Cormorant Garamond',Georgia,serif;}
-::-webkit-scrollbar{width:3px;height:3px;}
-::-webkit-scrollbar-track{background:var(--bg);}
-::-webkit-scrollbar-thumb{background:var(--border2);}
-input,select,textarea{font-family:inherit;background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:3px;outline:none;font-size:14px;transition:border-color .2s;}
-input:focus,select:focus,textarea:focus{border-color:var(--gold);}
-button{cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;border:none;border-radius:3px;transition:all .2s;}
-.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060a06;padding:10px 24px;font-size:14px;}
-.btn-gold:hover{filter:brightness(1.1);}
-.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);padding:8px 18px;font-size:13px;}
-.btn-ghost:hover{border-color:var(--green);color:var(--text);}
-.btn-sm{padding:5px 12px;font-size:11px;}
-.btn-danger{background:transparent;border:1px solid #3a1818;color:var(--red);padding:5px 10px;font-size:11px;letter-spacing:1px;}
-.btn-danger:hover{background:#3a181822;}
-.s-eagle{background:var(--gold);color:#060a06;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;margin:auto;font-weight:700;}
-.s-birdie{border:2px solid var(--gold);color:var(--gold);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;margin:auto;}
-.s-par{color:var(--text);}
-.s-bogey{color:var(--amber);}
-.s-double{color:var(--red);font-weight:700;}
-.nav-pill{padding:7px 16px;font-family:'Bebas Neue';letter-spacing:2px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);transition:all .2s;white-space:nowrap;}
-.nav-pill.active{color:var(--gold);border-bottom-color:var(--gold);}
-.nav-pill:hover{color:var(--text);}
-.flight-chip{padding:4px 14px;font-size:12px;border:1px solid var(--border);border-radius:20px;color:var(--text3);cursor:pointer;transition:all .2s;background:transparent;font-family:'Bebas Neue';letter-spacing:1px;}
-.flight-chip.active{border-color:var(--green);color:#8ac88a;background:var(--bg3);}
-.player-row{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;}
-.player-row:hover{background:var(--bg3);}
-.sc-input{width:36px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);text-align:center;padding:4px 2px;border-radius:3px;font-size:13px;font-family:'DM Mono';}
-.sc-input:focus{border-color:var(--gold);outline:none;}
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;}
-.section-label{font-family:'Bebas Neue';letter-spacing:3px;font-size:11px;color:var(--green);margin-bottom:10px;}
-.upload-zone{border:2px dashed var(--border2);border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all .2s;}
-.upload-zone:hover{border-color:var(--gold-dim);background:var(--bg3);}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(6px);}
-.notif{position:fixed;top:20px;right:20px;z-index:999;padding:12px 20px;border-radius:4px;font-size:14px;animation:slideIn .3s ease;}
-.notif-success{background:#1a3a1a;border:1px solid var(--green);color:#8ac88a;}
-.notif-error{background:#3a1818;border:1px solid var(--red);color:#e08080;}
-.notif-info{background:#1a1a3a;border:1px solid #5a5a9a;color:#9a9ae0;}
-@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.fade-up{animation:fadeUp .35s ease;}
-.pulse{animation:pulse2 2s infinite;}
-@keyframes pulse2{0%,100%{opacity:1}50%{opacity:.35}}
-.hole-score-btn{border-radius:6px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:'DM Mono';font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
-.hole-score-btn:hover{border-color:var(--gold);color:var(--text);}
-.hole-score-btn.active{border-color:var(--gold);background:var(--bg4);color:var(--gold);}
-.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;}
-.sync-dot.syncing{background:var(--amber);animation:pulse2 0.8s infinite;}
-.sync-dot.error{background:var(--red);}
-`;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ── AdminView as standalone component to prevent remount on parent re-render
@@ -1303,7 +1242,6 @@ function AppInner() {
 
   if (loading) return (
     <div style={{minHeight:"100vh",background:"#080c08",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <style>{CSS}</style>
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:4,color:"#5a9a5a"}} className="pulse">LOADING TOURNAMENT DATA…</div>
     </div>
   );
@@ -3139,7 +3077,6 @@ function AppInner() {
 
   return (
     <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--text)"}}>
-      <style>{CSS}</style>
       {notif && <div className={`notif notif-${notif.type}`}>{notif.msg}</div>}
 
       {/* Scorecard modal */}
