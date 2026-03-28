@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc
 } from "firebase/firestore";
+import { SKILL_LEVELS, DEFAULT_PAR, DEFAULT_YARDS, HCP_STROKES, TOURNAMENT_ID } from "./constants";
 
 // ── Error Boundary — shows friendly message instead of black screen
 class ErrorBoundary extends React.Component {
@@ -40,15 +41,10 @@ const hashPin = async (pin) => {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 };
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const SKILL_LEVELS  = ["Scratch (0-5)", "Low (6-12)", "Mid (13-20)", "High (21+)"];
-const DEFAULT_PAR   = [4,4,3,4,5,3,4,4,5, 4,3,4,5,4,3,4,4,5];
-const DEFAULT_YARDS = [385,412,178,395,520,162,430,388,510, 402,185,415,535,375,160,420,395,525];
-const HCP_STROKES   = [7,1,15,5,9,17,3,13,11, 8,18,4,6,16,14,2,12,10];
-const JOIN_CODE     = "NORTHSTAR24";
-const LEAGUE_PASSWORD = "Northstar26";
-const ADMIN_PIN     = "0723";
-const TOURNAMENT_ID = "tournament-2024"; // change per season/event
+// ─── Secrets (from environment — never hardcode) ─────────────────────────────
+const JOIN_CODE       = process.env.REACT_APP_JOIN_CODE;
+const LEAGUE_PASSWORD = process.env.REACT_APP_LEAGUE_PASSWORD;
+const ADMIN_PIN       = process.env.REACT_APP_ADMIN_PIN;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const toPM = v =>
@@ -252,8 +248,6 @@ function OneOffCreator({ players, notify, courseLibrary }) {
     return () => { unsub(); unsub2(); };
   }, []);
 
-  const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
-
   const [password,   setPassword]   = React.useState("");
   const [courseInfo, setCourseInfo] = React.useState(null);
 
@@ -295,9 +289,9 @@ function OneOffCreator({ players, notify, courseLibrary }) {
         p.scores.forEach((s,i) => {
           if (!s) return;
           let strokes = 0;
-          if (HCP_S[i] <= snapCh) strokes++;
-          if (snapCh > 18 && HCP_S[i] <= snapCh-18) strokes++;
-          if (snapCh > 36 && HCP_S[i] <= snapCh-36) strokes++;
+          if (HCP_STROKES[i] <= snapCh) strokes++;
+          if (snapCh > 18 && HCP_STROKES[i] <= snapCh-18) strokes++;
+          if (snapCh > 36 && HCP_STROKES[i] <= snapCh-36) strokes++;
           net += s - strokes;
         });
         return { id:p.id, name:p.name, handicap:p.handicap, flight:p.flight, gross, net, scores:[...p.scores] };
@@ -1009,7 +1003,7 @@ function AppInner() {
   const [ctpBets, setCtpBets] = useState({});      // { holeIndex: { entries: {playerId: {feet,inche
   const [activeOneOff, setActiveOneOff] = useState(null);
   const [activeOnOffs, setActiveOnOffs] = useState([]);
-  const [moreOpen, setMoreOpen] = useState(false); // { playerId: { url, verified, uploadedAt } }
+  const [moreOpen, setMoreOpen] = useState(false); // mobile nav toggle
   const [courseLibrary, setCourseLibrary] = useState([]);
   const [foursomes, setFoursomes] = useState([]);   // foursome groups from Firebase
   const [groupBets, setGroupBets] = useState([]);   // group bets from Firebase
@@ -1397,8 +1391,6 @@ function AppInner() {
     const [showPlayers, setShowPlayers] = React.useState(false);
     const [expandedTourney, setExpandedTourney] = React.useState(null); // id of past tourney showing players
 
-    const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
-
     React.useEffect(() => {
       const unsub = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments"), snap => {
         const arr = snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -1459,9 +1451,9 @@ function AppInner() {
         let net=0;
         p.scores.forEach((s,i)=>{
           if(!s)return; let str=0;
-          if(HCP_S[i]<=ch)str++;
-          if(ch>18&&HCP_S[i]<=ch-18)str++;
-          if(ch>36&&HCP_S[i]<=ch-36)str++;
+          if(HCP_STROKES[i]<=ch)str++;
+          if(ch>18&&HCP_STROKES[i]<=ch-18)str++;
+          if(ch>36&&HCP_STROKES[i]<=ch-36)str++;
           net+=s-str;
         });
         return {...p,gross,net,thru:holesPlayed(p)};
@@ -1520,9 +1512,9 @@ function AppInner() {
             let net=0;
             p.scores?.forEach((s,i)=>{
               if(!s)return; let str=0;
-              if(HCP_S[i]<=ch)str++;
-              if(ch>18&&HCP_S[i]<=ch-18)str++;
-              if(ch>36&&HCP_S[i]<=ch-36)str++;
+              if(HCP_STROKES[i]<=ch)str++;
+              if(ch>18&&HCP_STROKES[i]<=ch-18)str++;
+              if(ch>36&&HCP_STROKES[i]<=ch-36)str++;
               net+=s-str;
             });
           }).sort((a,b)=>a.net-b.net)
@@ -1861,7 +1853,6 @@ function AppInner() {
 
     const par3s = pars.map((p,i) => p===3 ? i : -1).filter(i => i !== -1);
     const getPlayer = id => players.find(p => p.id === id);
-    const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
 
     const groupBetsFor = (group) => groupBets.filter(b =>
       b.foursomeId === group.id
@@ -1905,7 +1896,7 @@ function AppInner() {
       const gross = holes.filter(Boolean).reduce((a,b)=>a+b,0);
       if (scoreType === "gross") return gross;
       let strokes = 0;
-      holes.forEach((s,hi)=>{ if(!s)return; const holeIdx=range[0]+hi; if(HCP_S[holeIdx]<=p.handicap)strokes++; if(p.handicap>18&&HCP_S[holeIdx]<=p.handicap-18)strokes++; });
+      holes.forEach((s,hi)=>{ if(!s)return; const holeIdx=range[0]+hi; if(HCP_STROKES[holeIdx]<=p.handicap)strokes++; if(p.handicap>18&&HCP_STROKES[holeIdx]<=p.handicap-18)strokes++; });
       return gross - strokes;
     };
 
@@ -2200,7 +2191,6 @@ function AppInner() {
   };
 
     const Leaderboard = () => {
-    const HCP_S = [7,1,15,5,9,17,3,13,11,8,18,4,6,16,14,2,12,10];
     const oneOffPlayers = activeOneOff
       ? (activeOneOff.hasPassword
           ? players.filter(p => p.oneOffId === activeOneOff.id && p.scores?.some(Boolean))
@@ -2213,8 +2203,8 @@ function AppInner() {
         p.scores.forEach((s,i) => {
           if (!s) return;
           let str = 0;
-          if (HCP_S[i] <= p.handicap) str++;
-          if (p.handicap > 18 && HCP_S[i] <= p.handicap-18) str++;
+          if (HCP_STROKES[i] <= p.handicap) str++;
+          if (p.handicap > 18 && HCP_STROKES[i] <= p.handicap-18) str++;
           net += s - str;
         });
         const thru = holesPlayed(p);
@@ -3239,8 +3229,6 @@ function AppInner() {
     ["sidebets","🤝 SIDEBETS"],
     ["history","📖 HISTORY"],
   ];
-  const NAV_MORE = [];
-  const NAV = [...NAV_PRIMARY];
   const activeNav = screen==="my-scores"?"login":screen==="my-scores-login"?"login":screen==="sidebets"?"sidebets":screen==="tournament-scores"?"tournament":screen==="amateur-register"?"amateurs":screen;
 
   return (
