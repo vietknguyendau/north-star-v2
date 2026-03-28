@@ -11,6 +11,8 @@ import {
   doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc
 } from "firebase/firestore";
 import { SKILL_LEVELS, DEFAULT_PAR, DEFAULT_YARDS, HCP_STROKES, TOURNAMENT_ID } from "./constants";
+import { hashPin, toPM, lastFilledIdx, holesPlayed, calcGrossToPar, calcCourseHandicap, calcNet, scoreLabel, scoreClass } from "./lib/scoring";
+import { calcHoleRange } from "./lib/handicap";
 
 // ── Error Boundary — shows friendly message instead of black screen
 class ErrorBoundary extends React.Component {
@@ -35,86 +37,12 @@ class ErrorBoundary extends React.Component {
 }
 
 
-// ── Simple PIN hash (SHA-256 via Web Crypto API)
-const hashPin = async (pin) => {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-};
-
 // ─── Secrets (from environment — never hardcode) ─────────────────────────────
 const JOIN_CODE       = process.env.REACT_APP_JOIN_CODE;
 const LEAGUE_PASSWORD = process.env.REACT_APP_LEAGUE_PASSWORD;
 const ADMIN_PIN       = process.env.REACT_APP_ADMIN_PIN;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const toPM = v =>
-  v === null || v === undefined || isNaN(v) ? "—"
-  : v === 0 ? "E" : v > 0 ? `+${v}` : `${v}`;
-
-const lastFilledIdx = scores => {
-  let last = -1;
-  scores.forEach((s, i) => { if (s !== null) last = i; });
-  return last;
-};
-
-const calcGrossToPar = (player, pars) => {
-  const last = lastFilledIdx(player.scores);
-  if (last < 0) return null;
-  const gross  = player.scores.slice(0, last+1).filter(s=>s!==null).reduce((a,b)=>a+b,0);
-  const parSum = pars.slice(0, last+1).reduce((a,b)=>a+b,0);
-  return gross - parSum;
-};
-
-// WHS Course Handicap = Index × (Slope / 113) + (Rating - Par)
-const calcCourseHandicap = (handicapIndex, slope, rating, par) => {
-  const s = parseFloat(slope) || 113;
-  const r = parseFloat(rating) || par;
-  const p = parseInt(par) || 72;
-  return Math.round(handicapIndex * (s / 113) + (r - p));
-};
-
-const calcNet = (player, pars, course) => {
-  const last = lastFilledIdx(player.scores);
-  if (last < 0) return null;
-  const totalPar = pars.reduce((a,b)=>a+b,0);
-  // Use WHS course handicap if course info available, otherwise use raw index
-  const courseHcp = (course?.slope && course?.rating)
-    ? calcCourseHandicap(player.handicap, course.slope, course.rating, totalPar)
-    : player.handicap;
-  let hcpStrokes = 0;
-  player.scores.forEach((s, i) => {
-    if (s === null) return;
-    if (HCP_STROKES[i] <= courseHcp) hcpStrokes++;
-    if (courseHcp > 18 && HCP_STROKES[i] <= courseHcp - 18) hcpStrokes++;
-    if (courseHcp > 36 && HCP_STROKES[i] <= courseHcp - 36) hcpStrokes++;
-  });
-  const gross  = player.scores.slice(0,last+1).filter(s=>s!==null).reduce((a,b)=>a+b,0);
-  const parSum = pars.slice(0,last+1).reduce((a,b)=>a+b,0);
-  return gross - hcpStrokes - parSum;
-};
-
-const holesPlayed = p => lastFilledIdx(p.scores) + 1;
-
-const scoreLabel = (score, par) => {
-  if (score === null) return "";
-  const d = score - par;
-  if (d <= -2) return "EAGLE";
-  if (d === -1) return "BIRDIE";
-  if (d === 0)  return "PAR";
-  if (d === 1)  return "BOGEY";
-  if (d === 2)  return "DOUBLE BOGEY";
-  return "TRIPLE+";
-};
-
-const scoreClass = (score, par) => {
-  if (score === null) return "";
-  const d = score - par;
-  if (d <= -2) return "s-eagle";
-  if (d === -1) return "s-birdie";
-  if (d === 0)  return "s-par";
-  if (d === 1)  return "s-bogey";
-  return "s-double";
-};
+// ─── Helpers (imported from lib/scoring and lib/handicap) ────────────────────
 
 // ─── CSS ─────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -226,7 +154,7 @@ function PinResetButton({ player, notify }) {
 
 
 // ── One-Off Tournament Creator (used inside AdminView)
-function OneOffCreator({ players, notify, courseLibrary }) {
+function OneOffCreator({ players, notify, courseLibrary, pars }) {
   const [title,    setTitle]    = React.useState("");
   const [date,     setDate]     = React.useState("");
   const [course,   setCourse2]  = React.useState("");
@@ -280,20 +208,13 @@ function OneOffCreator({ players, notify, courseLibrary }) {
     const eligible = t.id
       ? players.filter(p => p.scores?.some(Boolean) && (!t.hasPassword || p.oneOffId === t.id))
       : players.filter(p => p.scores?.some(Boolean));
+    const snapPars = pars || DEFAULT_PAR;
+    const snapCourse = active?.courseDetails ? { slope: active.courseDetails.slope, rating: active.courseDetails.rating } : null;
     const snap = eligible
       .map(p => {
-        const gross = p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
-        const snapPar = pars?.reduce((a,b)=>a+b,0)||72;
-        const snapCh = calcCourseHandicap(p.handicap, active?.courseDetails?.slope||113, active?.courseDetails?.rating||snapPar, snapPar);
-        let net = 0;
-        p.scores.forEach((s,i) => {
-          if (!s) return;
-          let strokes = 0;
-          if (HCP_STROKES[i] <= snapCh) strokes++;
-          if (snapCh > 18 && HCP_STROKES[i] <= snapCh-18) strokes++;
-          if (snapCh > 36 && HCP_STROKES[i] <= snapCh-36) strokes++;
-          net += s - strokes;
-        });
+        const result = calcHoleRange(p.scores, p.handicap, snapCourse, snapPars);
+        const gross = result?.gross ?? p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
+        const net = result ? result.gross - result.strokes : gross;
         return { id:p.id, name:p.name, handicap:p.handicap, flight:p.flight, gross, net, scores:[...p.scores] };
       })
       .sort((a,b) => a.net - b.net);
@@ -445,7 +366,7 @@ function OneOffCreator({ players, notify, courseLibrary }) {
 
 function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput, setPinInput,
   pinError, setPinError, savePlayer, removePlayerDb, saveCourse, setCourse, updateField, notify,
-  scorecardUploads, courseLibrary, saveCourseToLibrary }) {
+  scorecardUploads, courseLibrary, saveCourseToLibrary, pars }) {
     const [localCourse, setLocalCourse] = useState(course || {});
     const [saving, setSaving] = useState(false);
     const [courseKey, setCourseKey] = useState(0);
@@ -724,7 +645,7 @@ function AdminView({ course, players, adminUnlocked, setAdminUnlocked, pinInput,
         {/* ── One-Off Tournament Creator */}
         <div style={{marginTop:32}}>
           <div className="section-label">── ONE-OFF TOURNAMENTS</div>
-          <OneOffCreator players={players} notify={notify} courseLibrary={courseLibrary} />
+          <OneOffCreator players={players} notify={notify} courseLibrary={courseLibrary} pars={pars} />
         </div>
       </div>
     );
@@ -1196,24 +1117,16 @@ function AppInner() {
   const determineRoundWinner = (bet, participantIds) => {
     const scoreType = bet.scoreType || "net"; // net | gross
     const holeRange = bet.type === "front9" ? [0,9] : bet.type === "back9" ? [9,18] : [0,18];
+    const rangeLen = holeRange[1] - holeRange[0];
     let best = null, bestScore = Infinity;
     participantIds.forEach(pid => {
       const p = players.find(pl => pl.id === pid);
       if (!p) return;
-      const holes = p.scores.slice(holeRange[0], holeRange[1]);
-      const played = holes.filter(Boolean);
-      if (played.length < (holeRange[1] - holeRange[0])) return; // not finished yet
-      const gross = played.reduce((a,b) => a+b, 0);
-      let strokes = 0;
-      if (scoreType === "net") {
-        holes.forEach((s, hi) => {
-          const holeIdx = holeRange[0] + hi;
-          if (HCP_STROKES[holeIdx] <= p.handicap) strokes++;
-          if (p.handicap > 18 && HCP_STROKES[holeIdx] <= p.handicap - 18) strokes++;
-        });
-      }
-      const score = gross - strokes;
-      if (score < bestScore) { bestScore = score; best = pid; }
+      const result = calcHoleRange(p.scores, p.handicap, course, pars, holeRange);
+      if (!result || result.thru < rangeLen) return; // not finished yet
+      // gross = raw strokes; gross - strokes = net adjusted (lowest wins)
+      const compareScore = scoreType === "gross" ? result.gross : result.gross - result.strokes;
+      if (compareScore < bestScore) { bestScore = compareScore; best = pid; }
     });
     return best;
   };
@@ -1445,18 +1358,11 @@ function AppInner() {
         ? players.filter(p=>p.oneOffId===t.id && p.scores?.some(Boolean))
         : players.filter(p=>p.scores?.some(Boolean));
       const rows = joined.map(p=>{
-        const gross=p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
-        const totalPar=pars.reduce((a,b)=>a+b,0);
-        const ch = (course?.slope&&course?.rating) ? calcCourseHandicap(p.handicap,course.slope,course.rating,totalPar) : p.handicap;
-        let net=0;
-        p.scores.forEach((s,i)=>{
-          if(!s)return; let str=0;
-          if(HCP_STROKES[i]<=ch)str++;
-          if(ch>18&&HCP_STROKES[i]<=ch-18)str++;
-          if(ch>36&&HCP_STROKES[i]<=ch-36)str++;
-          net+=s-str;
-        });
-        return {...p,gross,net,thru:holesPlayed(p)};
+        const result = calcHoleRange(p.scores, p.handicap, course, pars);
+        const gross = result?.gross || 0;
+        const net = result ? result.net : 0;
+        const thru = result?.thru || 0;
+        return {...p, gross, net, thru};
       }).sort((a,b)=>a.net-b.net);
       if (!rows.length) return (
         <div style={{padding:"20px",textAlign:"center",color:"var(--text3)",fontSize:13,fontStyle:"italic"}}>
@@ -1506,17 +1412,8 @@ function AppInner() {
       // For live: compute from live scores. For past: use snapshot data
       const rows = isLive
         ? joined.map(p=>{
-            const gross=p.scores?.filter(Boolean).reduce((a,b)=>a+b,0)||0;
-            const totalPar=pars.reduce((a,b)=>a+b,0);
-            const ch=(course?.slope&&course?.rating)?calcCourseHandicap(p.handicap,course.slope,course.rating,totalPar):p.handicap;
-            let net=0;
-            p.scores?.forEach((s,i)=>{
-              if(!s)return; let str=0;
-              if(HCP_STROKES[i]<=ch)str++;
-              if(ch>18&&HCP_STROKES[i]<=ch-18)str++;
-              if(ch>36&&HCP_STROKES[i]<=ch-36)str++;
-              net+=s-str;
-            });
+            const result = calcHoleRange(p.scores || [], p.handicap, course, pars);
+            return {...p, gross: result?.gross||0, net: result?.net||0, thru: result?.thru||0};
           }).sort((a,b)=>a.net-b.net)
         : joined.map(p=>({...p,thru:p.scores?.filter(Boolean).length||18})).sort((a,b)=>a.net-b.net);
 
@@ -1891,13 +1788,9 @@ function AppInner() {
     const getGroupScore = (pid, type, scoreType) => {
       const p = getPlayer(pid); if (!p) return null;
       const range = type==="front9"?[0,9]:type==="back9"?[9,18]:[0,18];
-      const holes = p.scores.slice(range[0], range[1]);
-      if (!holes.some(Boolean)) return null;
-      const gross = holes.filter(Boolean).reduce((a,b)=>a+b,0);
-      if (scoreType === "gross") return gross;
-      let strokes = 0;
-      holes.forEach((s,hi)=>{ if(!s)return; const holeIdx=range[0]+hi; if(HCP_STROKES[holeIdx]<=p.handicap)strokes++; if(p.handicap>18&&HCP_STROKES[holeIdx]<=p.handicap-18)strokes++; });
-      return gross - strokes;
+      const result = calcHoleRange(p.scores, p.handicap, course, pars, range);
+      if (!result) return null;
+      return scoreType === "gross" ? result.gross : result.gross - result.strokes;
     };
 
     const thruRange = (pid, type) => {
@@ -2198,17 +2091,8 @@ function AppInner() {
       : [];
     const oneOffRows = oneOffPlayers
       .map(p => {
-        const gross = p.scores.filter(Boolean).reduce((a,b)=>a+b,0);
-        let net = 0;
-        p.scores.forEach((s,i) => {
-          if (!s) return;
-          let str = 0;
-          if (HCP_STROKES[i] <= p.handicap) str++;
-          if (p.handicap > 18 && HCP_STROKES[i] <= p.handicap-18) str++;
-          net += s - str;
-        });
-        const thru = holesPlayed(p);
-        return { ...p, gross, net, thru };
+        const result = calcHoleRange(p.scores, p.handicap, course, pars);
+        return { ...p, gross: result?.gross||0, net: result?.net||0, thru: result?.thru||0 };
       })
       .sort((a,b) => a.net - b.net);
 
@@ -3330,6 +3214,7 @@ function AppInner() {
           scorecardUploads={scorecardUploads}
           courseLibrary={courseLibrary}
           saveCourseToLibrary={saveCourseToLibrary}
+          pars={pars}
         />}
       </div>
     </div>
