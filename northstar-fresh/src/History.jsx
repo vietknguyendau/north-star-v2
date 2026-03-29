@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "./firebase";
 import { collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
+import ConfirmModal from "./components/ConfirmModal";
 
 const TOURNAMENT_ID = "tournament-2024";
 
@@ -77,6 +78,7 @@ export default function TournamentHistory({ players, adminUnlocked }) {
   const [selectedPlayer,setSelectedPlayer] = useState(null);
   const [mainTab,       setMainTab]       = useState("season"); // top-level: "season" | "oneoff"
   const [activeOneOff,  setActiveOneOff]  = useState(null);
+  const [confirm, setConfirm] = useState(null);
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"tournament_snapshots"), snap => {
@@ -239,6 +241,7 @@ export default function TournamentHistory({ players, adminUnlocked }) {
 
   return (
     <div className="hist-wrap hist-fade">
+      {confirm && <ConfirmModal message={confirm.message} confirmLabel={confirm.confirmLabel} onConfirm={confirm.onConfirm} onCancel={()=>setConfirm(null)} />}
       <style>{CSS}</style>
 
       {/* Top-level tabs */}
@@ -528,10 +531,16 @@ export default function TournamentHistory({ players, adminUnlocked }) {
 
               {adminUnlocked && (
                 <div style={{marginBottom:16,display:"flex",justifyContent:"flex-end"}}>
-                  <button className="btn-danger" style={{fontSize:11}} onClick={async()=>{
-                    if (!window.confirm(`Delete "${selectedOneOff.title}"? This cannot be undone.`)) return;
-                    await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",selectedOneOff.id));
-                    setSelectedEvent(null);
+                  <button className="btn-danger" style={{fontSize:11}} onClick={()=>{
+                    setConfirm({
+                      message: `Delete "${selectedOneOff.title}"? This cannot be undone.`,
+                      confirmLabel: "DELETE",
+                      onConfirm: async () => {
+                        setConfirm(null);
+                        await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",selectedOneOff.id));
+                        setSelectedEvent(null);
+                      },
+                    });
                   }}>🗑 DELETE TOURNAMENT</button>
                 </div>
               )}
