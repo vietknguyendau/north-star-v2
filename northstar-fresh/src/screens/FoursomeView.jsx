@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { db } from "../firebase";
 import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { TOURNAMENT_ID, DEFAULT_PAR } from "../constants";
@@ -6,13 +6,12 @@ import { calcNet, calcGrossToPar, toPM, holesPlayed } from "../lib/scoring";
 import { calcHoleRange } from "../lib/handicap";
 import { usePlayers } from "../contexts/PlayersContext";
 import { useTournament } from "../contexts/TournamentContext";
-import { useAuth } from "../contexts/AuthContext";
 import { useCourse } from "../contexts/CourseContext";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function FoursomeView({ notify }) {
   const { players } = usePlayers();
-  const { groupBets, foursomes } = useTournament();
-  const { activePlayer } = useAuth();
+  const { groupBets, foursomes, deleteFoursome } = useTournament();
   const { course } = useCourse();
 
   const pars = (Array.isArray(course?.par) && course.par.length===18) ? course.par : DEFAULT_PAR;
@@ -28,6 +27,7 @@ export default function FoursomeView({ notify }) {
   const [betPlayers, setBetPlayers] = React.useState([]);
   const [betHole, setBetHole]       = React.useState("");
   const [betErr, setBetErr]         = React.useState("");
+  const [confirmState, setConfirmState] = useState(null);
 
   const getPlayer = id => players.find(p => p.id === id);
   const groupBetsFor = (group) => groupBets.filter(b => b.foursomeId === group.id);
@@ -70,6 +70,18 @@ export default function FoursomeView({ notify }) {
     if (!gName.trim() || gMembers.length < 2) return;
     await createFoursome(gName.trim(), gMembers);
     setGName(""); setGMembers([]); setStep("list");
+  };
+
+  const handleDeleteFoursome = (id, name) => {
+    setConfirmState({
+      title: "Delete Group",
+      message: `Delete group "${name}"?`,
+      onConfirm: async () => {
+        await deleteFoursome(id, name);
+        setConfirmState(null);
+      },
+      destructive: true
+    });
   };
 
   const handleAddBet = async () => {
@@ -234,9 +246,14 @@ export default function FoursomeView({ notify }) {
                 <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:1}}>{group.name}</div>
                 <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{group.memberIds.map(id=>getPlayer(id)?.name||"?").join(" · ")}</div>
               </div>
-              <div style={{textAlign:"right"}}>
+              <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
                 <div style={{fontSize:11,color:"var(--text3)"}}>{bets.length} bet{bets.length!==1?"s":""}</div>
-                {myBalance!==null&&myBalance!==0&&<div style={{fontFamily:"'DM Mono'",fontSize:14,fontWeight:700,color:myBalance>0?"var(--green)":"var(--red)",marginTop:4}}>{myBalance>0?`+$${myBalance}`:`-$${Math.abs(myBalance)}`}</div>}
+                {myBalance!==null&&myBalance!==0&&<div style={{fontFamily:"'DM Mono'",fontSize:14,fontWeight:700,color:myBalance>0?"var(--green)":"var(--red)"}}>{myBalance>0?`+$${myBalance}`:`-$${Math.abs(myBalance)}`}</div>}
+                <button
+                  onClick={e=>{ e.stopPropagation(); handleDeleteFoursome(group.id, group.name); }}
+                  style={{fontSize:10,fontFamily:"'Bebas Neue'",letterSpacing:2,padding:"3px 10px",background:"transparent",border:"1px solid #4a1010",color:"var(--red)",borderRadius:3,cursor:"pointer"}}>
+                  DELETE
+                </button>
               </div>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -252,6 +269,14 @@ export default function FoursomeView({ notify }) {
             + ADD SOLO BET
           </button>
         </div>
+      )}
+      {confirmState && (
+        <ConfirmModal
+          message={confirmState.message}
+          onConfirm={confirmState.onConfirm}
+          onCancel={()=>setConfirmState(null)}
+          danger={confirmState.destructive}
+        />
       )}
     </div>
   );

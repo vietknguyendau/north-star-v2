@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { db } from "../firebase";
-import { doc, collection, onSnapshot } from "firebase/firestore";
+import { doc, collection, onSnapshot, deleteDoc } from "firebase/firestore";
 import { TOURNAMENT_ID } from "../constants";
 
 const TournamentContext = createContext(null);
@@ -59,9 +59,19 @@ export function TournamentProvider({ children }) {
     return () => { unsubOneOff(); unsubActive(); unsubSaved(); unsubCtp(); unsubFoursomes(); unsubBets(); };
   }, []);
 
+  const deleteFoursome = useCallback(async (id, name) => {
+    try {
+      await deleteDoc(doc(db, "tournaments", TOURNAMENT_ID, "foursomes", id));
+      notify(`Group "${name}" deleted.`);
+    } catch(e) { 
+      console.error(e); 
+      notify("Failed to delete group — check connection.", "error"); 
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ activeOneOff, activeOnOffs, oneOffTournaments, ctpBets, foursomes, groupBets }),
-    [activeOneOff, activeOnOffs, oneOffTournaments, ctpBets, foursomes, groupBets]
+    () => ({ activeOneOff, activeOnOffs, oneOffTournaments, ctpBets, foursomes, groupBets, deleteFoursome }),
+    [activeOneOff, activeOnOffs, oneOffTournaments, ctpBets, foursomes, groupBets, deleteFoursome]
   );
 
   return (
