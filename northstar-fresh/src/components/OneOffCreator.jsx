@@ -5,6 +5,7 @@ import { TOURNAMENT_ID, DEFAULT_PAR } from "../constants";
 import { hashPin } from "../lib/scoring";
 import { calcHoleRange } from "../lib/handicap";
 import CourseSearch from "./CourseSearch";
+import ConfirmModal from "./ConfirmModal";
 
 export default function OneOffCreator({ players, notify, courseLibrary, pars }) {
   const [title,    setTitle]    = React.useState("");
@@ -17,6 +18,7 @@ export default function OneOffCreator({ players, notify, courseLibrary, pars }) 
   const [active,   setActive]   = React.useState(null);
   const [password,   setPassword]   = React.useState("");
   const [courseInfo, setCourseInfo] = React.useState(null);
+  const [confirm, setConfirm] = React.useState(null);
 
   React.useEffect(() => {
     const unsub = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments"), snap => {
@@ -30,27 +32,32 @@ export default function OneOffCreator({ players, notify, courseLibrary, pars }) 
     return () => { unsub(); unsub2(); };
   }, []);
 
-  const startTournament = async () => {
+  const startTournament = () => {
     if (!title.trim()) { notify("Enter a title before starting.", "error"); return; }
-    if (!window.confirm(`Start "${title.trim()}"? Players can join and enter scores immediately.`)) return;
-    setStarting(true);
-    try {
-      const pwHash = password.trim() ? await hashPin(password.trim()) : null;
-      const oneOffId = `oneoff-${Date.now()}`;
-      const tData = {
-        id: oneOffId,
-        title: title.trim(),
-        date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
-        course: course.trim(), notes: notes.trim(), startedAt: Date.now(),
-        courseDetails: courseInfo || null,
-        pwHash, hasPassword: !!password.trim(),
-      };
-      await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",oneOffId), tData);
-      await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), tData);
-      setTitle(""); setDate(""); setCourse2(""); setNotes(""); setCourseInfo(null); setPassword("");
-      notify(`"${title.trim()}" started! Players can now join and enter scores. 🏌️`);
-    } catch(e) { console.error(e); notify("Failed to start tournament — check connection.", "error"); }
-    setStarting(false);
+    setConfirm({
+      message: `Start "${title.trim()}"? Players can join and enter scores immediately.`,
+      confirmLabel: "START", danger: false,
+      onConfirm: async () => {
+        setConfirm(null); setStarting(true);
+        try {
+          const pwHash = password.trim() ? await hashPin(password.trim()) : null;
+          const oneOffId = `oneoff-${Date.now()}`;
+          const tData = {
+            id: oneOffId,
+            title: title.trim(),
+            date: date || new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+            course: course.trim(), notes: notes.trim(), startedAt: Date.now(),
+            courseDetails: courseInfo || null,
+            pwHash, hasPassword: !!password.trim(),
+          };
+          await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",oneOffId), tData);
+          await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), tData);
+          setTitle(""); setDate(""); setCourse2(""); setNotes(""); setCourseInfo(null); setPassword("");
+          notify(`"${title.trim()}" started! Players can now join and enter scores. 🏌️`);
+        } catch(e) { console.error(e); notify("Failed to start tournament — check connection.", "error"); }
+        setStarting(false);
+      },
+    });
   };
 
   const lockAndSave = async () => {
@@ -87,27 +94,40 @@ export default function OneOffCreator({ players, notify, courseLibrary, pars }) 
     setSaving(false);
   };
 
-  const cancelActive = async (t) => {
+  const cancelActive = (t) => {
     const tourney = t || active;
     if (!tourney) return;
-    if (!window.confirm(`Cancel "${tourney.title}"? It won't be saved.`)) return;
-    try {
-      if (tourney.id) await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",tourney.id));
-      await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
-      notify("Tournament cancelled.");
-    } catch(e) { console.error(e); notify("Failed to cancel tournament — check connection.", "error"); }
+    setConfirm({
+      message: `Cancel "${tourney.title}"? It won't be saved.`,
+      confirmLabel: "CANCEL TOURNAMENT",
+      onConfirm: async () => {
+        setConfirm(null);
+        try {
+          if (tourney.id) await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"active_tournaments",tourney.id));
+          await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"));
+          notify("Tournament cancelled.");
+        } catch(e) { console.error(e); notify("Failed to cancel tournament — check connection.", "error"); }
+      },
+    });
   };
 
-  const remove = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"?`)) return;
-    await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",id));
-    notify("Tournament deleted.");
+  const remove = (id, name) => {
+    setConfirm({
+      message: `Delete "${name}"?`,
+      confirmLabel: "DELETE",
+      onConfirm: async () => {
+        setConfirm(null);
+        await deleteDoc(doc(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments",id));
+        notify("Tournament deleted.");
+      },
+    });
   };
 
   const playersWithScores = players.filter(p=>p.scores?.some(Boolean)).length;
 
   return (
     <div>
+      {confirm && <ConfirmModal message={confirm.message} confirmLabel={confirm.confirmLabel} danger={confirm.danger!==false} onConfirm={confirm.onConfirm} onCancel={()=>setConfirm(null)} />}
       {/* Active tournament banner */}
       {active && (
         <div style={{padding:"16px 20px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:6,marginBottom:16}}>
