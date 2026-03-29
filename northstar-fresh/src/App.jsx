@@ -12,7 +12,6 @@ import { usePlayers } from "./contexts/PlayersContext";
 import { useCourse } from "./contexts/CourseContext";
 import { useTournament } from "./contexts/TournamentContext";
 import ErrorBoundary from "./components/ErrorBoundary";
-import CtpLeaderboard from "./components/CtpLeaderboard";
 import AdminViewScreen from "./screens/AdminView";
 import LeaderboardScreen from "./screens/LeaderboardScreen";
 import TournamentTab from "./screens/TournamentTab";
@@ -26,12 +25,10 @@ import MyScoresLogin from "./screens/MyScoresLogin";
 import MyScores from "./screens/MyScores";
 import SidebetsLogin from "./screens/SidebetsLogin";
 
-const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN;
-
 function AppInner() {
   const { players, loading, syncStatus, setSyncStatus, scorecardUploads } = usePlayers();
   const { course, setCourse, courseLibrary } = useCourse();
-  const { activeOneOff, activeOnOffs, ctpBets, foursomes, groupBets } = useTournament();
+  const { ctpBets } = useTournament();
   const { activePlayer, setActivePlayer, adminUnlocked, setAdminUnlocked } = useAuth();
 
   const [screen, setScreen]           = useState("leaderboard");
@@ -50,7 +47,6 @@ function AppInner() {
   useEffect(() => () => clearTimeout(notifyTimer.current), []);
 
   const pars     = (Array.isArray(course?.par)   && course.par.length===18)   ? course.par   : DEFAULT_PAR;
-  const yards    = (Array.isArray(course?.yards)  && course.yards.length===18) ? course.yards : DEFAULT_YARDS;
   const totalPar = pars.reduce((a,b)=>a+b,0);
 
   const savePlayer = async (player) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { TOURNAMENT_ID } from "../constants";
@@ -33,8 +33,13 @@ export function PlayersProvider({ children }) {
     return () => { unsubPlayers(); unsubUploads(); };
   }, []);
 
+  const value = useMemo(
+    () => ({ players, loading, syncStatus, setSyncStatus, scorecardUploads }),
+    [players, loading, syncStatus, scorecardUploads]
+  );
+
   return (
-    <PlayersContext.Provider value={{ players, loading, syncStatus, setSyncStatus, scorecardUploads }}>
+    <PlayersContext.Provider value={value}>
       {children}
     </PlayersContext.Provider>
   );

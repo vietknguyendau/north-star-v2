@@ -1,36 +1,25 @@
 import React from "react";
 import { db } from "../firebase";
-import { doc, collection, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { TOURNAMENT_ID, DEFAULT_PAR } from "../constants";
 import { hashPin } from "../lib/scoring";
 import { calcHoleRange } from "../lib/handicap";
+import { useTournament } from "../contexts/TournamentContext";
 import CourseSearch from "./CourseSearch";
 import ConfirmModal from "./ConfirmModal";
 
 export default function OneOffCreator({ players, notify, courseLibrary, pars }) {
+  const { oneOffTournaments, activeOneOff: active } = useTournament();
+
   const [title,    setTitle]    = React.useState("");
   const [date,     setDate]     = React.useState("");
   const [course,   setCourse2]  = React.useState("");
   const [notes,    setNotes]    = React.useState("");
   const [saving,   setSaving]   = React.useState(false);
   const [starting, setStarting] = React.useState(false);
-  const [tourneys, setTourneys] = React.useState([]);
-  const [active,   setActive]   = React.useState(null);
   const [password,   setPassword]   = React.useState("");
   const [courseInfo, setCourseInfo] = React.useState(null);
   const [confirm, setConfirm] = React.useState(null);
-
-  React.useEffect(() => {
-    const unsub = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments"), snap => {
-      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      arr.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
-      setTourneys(arr);
-    });
-    const unsub2 = onSnapshot(doc(db,"tournaments",TOURNAMENT_ID,"settings","active_oneoff"), snap => {
-      setActive(snap.exists() ? snap.data() : null);
-    });
-    return () => { unsub(); unsub2(); };
-  }, []);
 
   const startTournament = () => {
     if (!title.trim()) { notify("Enter a title before starting.", "error"); return; }
@@ -217,10 +206,10 @@ export default function OneOffCreator({ players, notify, courseLibrary, pars }) 
       </div>
 
       {/* Saved list */}
-      {tourneys.length > 0 && (
+      {oneOffTournaments.length > 0 && (
         <div>
           <div style={{fontSize:10,color:"var(--text3)",letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:8}}>SAVED TOURNAMENTS</div>
-          {tourneys.map(t=>(
+          {oneOffTournaments.map(t=>(
             <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,marginBottom:6}}>
               <div>
                 <div style={{fontSize:14,fontWeight:600,color:"var(--text)"}}>{t.title}</div>

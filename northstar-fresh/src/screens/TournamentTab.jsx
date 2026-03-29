@@ -1,6 +1,6 @@
 import React from "react";
 import { db } from "../firebase";
-import { doc, collection, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { TOURNAMENT_ID, DEFAULT_PAR } from "../constants";
 import { hashPin, holesPlayed, toPM } from "../lib/scoring";
 import { calcHoleRange } from "../lib/handicap";
@@ -14,13 +14,12 @@ const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN;
 
 export default function TournamentTab({ activeHole, setActiveHole, setScreen, notify }) {
   const { players } = usePlayers();
-  const { activeOneOff, activeOnOffs } = useTournament();
+  const { activeOneOff, activeOnOffs, oneOffTournaments } = useTournament();
   const { setActivePlayer } = useAuth();
   const { course } = useCourse();
 
   const pars = (Array.isArray(course?.par) && course.par.length===18) ? course.par : DEFAULT_PAR;
 
-  const [tourneys, setTourneys]         = React.useState([]);
   const [tabStep, setTabStep]           = React.useState("list");
   const [selTourney, setSelTourney]     = React.useState(null);
   const [tLoginPid, setTLoginPid]       = React.useState("");
@@ -32,15 +31,6 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
   const [tStep,     setTStep]           = React.useState("name");
   const [showPlayers, setShowPlayers]   = React.useState(false);
   const [expandedTourney, setExpandedTourney] = React.useState(null);
-
-  React.useEffect(() => {
-    const unsub = onSnapshot(collection(db,"tournaments",TOURNAMENT_ID,"one_off_tournaments"), snap => {
-      const arr = snap.docs.map(d=>({id:d.id,...d.data()}));
-      arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      setTourneys(arr);
-    });
-    return () => unsub();
-  }, []);
 
   const selectedPlayer = players.find(p=>p.id===tLoginPid);
 
@@ -326,7 +316,7 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
   const activeTourneys = activeOnOffs.length > 0
     ? activeOnOffs
     : (activeOneOff ? [{ ...activeOneOff, isActive: true }] : []);
-  const pastTourneys = tourneys;
+  const pastTourneys = oneOffTournaments;
 
   return (
     <div className="fade-up">

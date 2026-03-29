@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { db } from "../firebase";
 import { doc, collection, onSnapshot, setDoc } from "firebase/firestore";
 import { TOURNAMENT_ID, DEFAULT_PAR, DEFAULT_YARDS } from "../constants";
@@ -43,8 +43,13 @@ export function CourseProvider({ children }) {
     return () => { unsubCourse(); unsubLibrary(); };
   }, []);
 
+  const value = useMemo(
+    () => ({ course, setCourse, courseLibrary }),
+    [course, courseLibrary]
+  );
+
   return (
-    <CourseContext.Provider value={{ course, setCourse, courseLibrary }}>
+    <CourseContext.Provider value={value}>
       {children}
     </CourseContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { db } from "../firebase";
 import { doc, collection, onSnapshot } from "firebase/firestore";
 import { TOURNAMENT_ID } from "../constants";
@@ -6,11 +6,12 @@ import { TOURNAMENT_ID } from "../constants";
 const TournamentContext = createContext(null);
 
 export function TournamentProvider({ children }) {
-  const [activeOneOff, setActiveOneOff]   = useState(null);
-  const [activeOnOffs, setActiveOnOffs]   = useState([]);
-  const [ctpBets, setCtpBets]             = useState({});
-  const [foursomes, setFoursomes]         = useState([]);
-  const [groupBets, setGroupBets]         = useState([]);
+  const [activeOneOff, setActiveOneOff]         = useState(null);
+  const [activeOnOffs, setActiveOnOffs]         = useState([]);
+  const [oneOffTournaments, setOneOffTournaments] = useState([]);
+  const [ctpBets, setCtpBets]                   = useState({});
+  const [foursomes, setFoursomes]               = useState([]);
+  const [groupBets, setGroupBets]               = useState([]);
 
   useEffect(() => {
     const unsubOneOff = onSnapshot(
@@ -24,6 +25,15 @@ export function TournamentProvider({ children }) {
         const arr = snap.docs.map(d => ({ id: d.id, ...d.data(), isActive: true }));
         arr.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
         setActiveOnOffs(arr);
+      }
+    );
+
+    const unsubSaved = onSnapshot(
+      collection(db, "tournaments", TOURNAMENT_ID, "one_off_tournaments"),
+      snap => {
+        const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setOneOffTournaments(arr);
       }
     );
 
@@ -46,11 +56,16 @@ export function TournamentProvider({ children }) {
       snap => setGroupBets(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );
 
-    return () => { unsubOneOff(); unsubActive(); unsubCtp(); unsubFoursomes(); unsubBets(); };
+    return () => { unsubOneOff(); unsubActive(); unsubSaved(); unsubCtp(); unsubFoursomes(); unsubBets(); };
   }, []);
 
+  const value = useMemo(
+    () => ({ activeOneOff, activeOnOffs, oneOffTournaments, ctpBets, foursomes, groupBets }),
+    [activeOneOff, activeOnOffs, oneOffTournaments, ctpBets, foursomes, groupBets]
+  );
+
   return (
-    <TournamentContext.Provider value={{ activeOneOff, activeOnOffs, ctpBets, foursomes, groupBets }}>
+    <TournamentContext.Provider value={value}>
       {children}
     </TournamentContext.Provider>
   );
