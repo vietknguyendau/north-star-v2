@@ -6,12 +6,14 @@ import { calcNet, calcGrossToPar, toPM, holesPlayed } from "../lib/scoring";
 import { calcHoleRange } from "../lib/handicap";
 import { usePlayers } from "../contexts/PlayersContext";
 import { useTournament } from "../contexts/TournamentContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useCourse } from "../contexts/CourseContext";
 import ConfirmModal from "../components/ConfirmModal";
 
 export default function FoursomeView({ notify }) {
   const { players } = usePlayers();
   const { groupBets, foursomes, deleteFoursome } = useTournament();
+  const { activePlayer } = useAuth();
   const { course } = useCourse();
 
   const pars = (Array.isArray(course?.par) && course.par.length===18) ? course.par : DEFAULT_PAR;
@@ -77,7 +79,13 @@ export default function FoursomeView({ notify }) {
       title: "Delete Group",
       message: `Delete group "${name}"?`,
       onConfirm: async () => {
-        await deleteFoursome(id, name);
+        try {
+          await deleteFoursome(id);
+          notify("Group deleted.");
+        } catch(e) {
+          console.error(e);
+          notify("Failed to delete group — check connection.", "error");
+        }
         setConfirmState(null);
       },
       destructive: true
