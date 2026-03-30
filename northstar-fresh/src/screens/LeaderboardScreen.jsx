@@ -1,7 +1,6 @@
 import React from "react";
 import { usePlayers } from "../contexts/PlayersContext";
 import { useTournament } from "../contexts/TournamentContext";
-import { useAuth } from "../contexts/AuthContext";
 import { useCourse } from "../contexts/CourseContext";
 import { calcNet, calcGrossToPar, toPM, holesPlayed } from "../lib/scoring";
 import { calcHoleRange } from "../lib/handicap";
@@ -41,16 +40,20 @@ export default function LeaderboardScreen({ setSelectedPid, setScreen, notify })
 
   return (
     <div className="fade-up">
-      <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:"1px solid var(--border)"}}>
+
+      {/* Tab strip */}
+      <div className="flex border-b border-border mb-6" style={{ marginBottom: -1 }}>
         {[["individual","👤 INDIVIDUAL"],["groups","🤝 GROUPS"]].map(([val,label])=>(
-          <div key={val}
+          <button key={val}
             onClick={()=>setLbTab(val)}
-            style={{padding:"10px 20px",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,cursor:"pointer",
-              color:lbTab===val?"var(--gold)":"var(--text3)",
-              borderBottom:lbTab===val?"2px solid var(--gold)":"2px solid transparent",
-              marginBottom:-1,transition:"all 0.15s"}}>
+            className="px-5 py-2.5 font-display text-[13px] tracking-[2px] cursor-pointer bg-transparent border-none transition-all duration-150"
+            style={{
+              color: lbTab===val ? "var(--gold)" : "var(--text3)",
+              borderBottom: lbTab===val ? "2px solid var(--gold)" : "2px solid transparent",
+              marginBottom: -1,
+            }}>
             {label}
-          </div>
+          </button>
         ))}
       </div>
 
@@ -58,52 +61,74 @@ export default function LeaderboardScreen({ setSelectedPid, setScreen, notify })
 
       {lbTab === "individual" && <>
         {activeOneOff && (
-          <div style={{marginBottom:28}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <div className="mb-7 mt-6">
+            {/* Live now header */}
+            <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
+              <div className="flex items-center gap-1.5">
                 <span style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",display:"inline-block",animation:"pulse2 1.2s infinite"}}/>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)"}}>LIVE NOW</span>
+                <span className="font-display text-[11px] tracking-[3px] text-green">LIVE NOW</span>
               </div>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:20,letterSpacing:2,color:"var(--text)"}}>{activeOneOff.title}</div>
-              {activeOneOff.course && <div style={{fontSize:12,color:"var(--text3)"}}>📍 {activeOneOff.course}</div>}
-              {activeOneOff.hasPassword && <span style={{fontSize:10,color:"var(--text3)",fontFamily:"'Bebas Neue'",letterSpacing:1,border:"1px solid var(--border2)",borderRadius:2,padding:"1px 6px"}}>🔒 INVITE ONLY</span>}
+              <div className="font-display text-xl tracking-[2px] text-text">{activeOneOff.title}</div>
+              {activeOneOff.course && <div className="text-xs text-t3">📍 {activeOneOff.course}</div>}
+              {activeOneOff.hasPassword && (
+                <span className="font-display text-[10px] tracking-[1px] text-t3 border border-border2 rounded-[2px] px-1.5 py-px">🔒 INVITE ONLY</span>
+              )}
             </div>
 
             {oneOffRows.length === 0 ? (
-              <div style={{padding:"24px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:6,textAlign:"center",color:"var(--text3)",fontSize:13,fontStyle:"italic"}}>
+              <div className="p-6 bg-bg2 border border-border rounded-[6px] text-center text-t3 text-[13px] italic">
                 Waiting for players to enter scores…
               </div>
             ) : (
-              <div style={{background:"var(--bg2)",border:"1px solid var(--green-dim)",borderRadius:6,overflow:"hidden"}}>
-                <div style={{display:"grid",gridTemplateColumns:"52px 1fr 60px 80px 80px 60px",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
-                  <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span>
-                  <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>NET</span><span style={{textAlign:"center"}}>HCP</span>
-                </div>
-                {oneOffRows.map((p, idx) => (
-                  <div key={p.id} className="player-row"
-                    style={{display:"grid",gridTemplateColumns:"52px 1fr 60px 80px 80px 60px",padding:"12px 16px",alignItems:"center",
-                      borderLeft:idx===0?"3px solid var(--green)":"3px solid transparent"}}
-                    onClick={()=>{ setSelectedPid(p.id); setScreen("scorecard"); }}>
-                    <span style={{fontFamily:"'Bebas Neue'",fontSize:20,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
-                      {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
-                    </span>
-                    <div>
-                      <div style={{fontSize:16,fontWeight:600,color:idx===0?"var(--text)":"var(--text2)"}}>{p.name}</div>
-                    </div>
-                    <div style={{textAlign:"center"}}>
-                      <div style={{fontSize:15,color:p.thru===18?"var(--green)":"var(--text)"}}>{p.thru===18?"F":p.thru||"—"}</div>
-                      <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1}}>{p.thru===18?"FINAL":p.thru>0?"THRU":"—"}</div>
-                    </div>
-                    <div style={{textAlign:"center",fontSize:16,color:p.gross>0?"var(--amber)":p.gross<0?"var(--gold)":"var(--text)"}}>{p.gross||"—"}</div>
-                    <div style={{textAlign:"center",fontSize:22,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{toPM(p.net)}</div>
-                    <div style={{textAlign:"center",fontSize:13,color:"var(--text3)"}}>{p.handicap}</div>
+              <div
+                className="-mx-4 md:mx-0 overflow-x-auto border border-green-dim rounded-[6px]"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
+                <div style={{ minWidth: 420 }}>
+                  <div
+                    className="grid bg-bg3 px-4 py-2.5 font-display text-[10px] tracking-[2px] text-t3"
+                    style={{ gridTemplateColumns: "52px 1fr 60px 80px 80px" }}
+                  >
+                    <span>POS</span><span>PLAYER</span>
+                    <span className="text-center">THRU</span>
+                    <span className="text-center">GROSS</span>
+                    <span className="text-center">NET</span>
                   </div>
-                ))}
+                  {oneOffRows.map((p, idx) => (
+                    <div key={p.id}
+                      className="player-row grid px-4 py-3 items-center border-b border-border last:border-b-0"
+                      style={{
+                        gridTemplateColumns: "52px 1fr 60px 80px 80px",
+                        borderLeft: idx===0 ? "3px solid var(--green)" : "3px solid transparent",
+                      }}
+                      onClick={()=>{ setSelectedPid(p.id); setScreen("scorecard"); }}>
+                      <span className="font-display text-xl"
+                        style={{color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
+                        {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
+                      </span>
+                      <div>
+                        <div className="text-[16px] font-semibold" style={{color:idx===0?"var(--text)":"var(--text2)"}}>{p.name}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[15px]" style={{color:p.thru===18?"var(--green)":"var(--text)"}}>{p.thru===18?"F":p.thru||"—"}</div>
+                        <div className="font-display text-[10px] text-t3 tracking-[1px]">{p.thru===18?"FINAL":p.thru>0?"THRU":"—"}</div>
+                      </div>
+                      <div className="text-center font-mono text-[16px]"
+                        style={{color:p.gross>0?"var(--amber)":p.gross<0?"var(--gold)":"var(--text)"}}>
+                        {p.gross||"—"}
+                      </div>
+                      <div className="text-center font-mono text-[22px] font-bold"
+                        style={{color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>
+                        {toPM(p.net)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            <div style={{borderTop:"1px solid var(--border)",marginTop:24,paddingTop:20}}>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:12}}>── SEASON LEADERBOARD</div>
+            <div className="border-t border-border mt-6 pt-5">
+              <div className="font-display text-[11px] tracking-[3px] text-t3 mb-3">── SEASON LEADERBOARD</div>
             </div>
           </div>
         )}
@@ -121,31 +146,34 @@ export default function LeaderboardScreen({ setSelectedPid, setScreen, notify })
           course={course}
         />
         {players.filter(p=>p.memberType!=="amateur").length===0 && (
-          <div style={{textAlign:"center",padding:"60px 20px",color:"var(--text3)"}}>
-            <div style={{fontSize:36,marginBottom:12}}>⛳</div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,marginBottom:8}}>NO PLAYERS YET</div>
+          <div className="text-center py-16 px-5 text-t3">
+            <div className="text-4xl mb-3">⛳</div>
+            <div className="font-display text-xl tracking-[2px] mb-2">NO PLAYERS YET</div>
           </div>
         )}
       </>}
 
       {lbTab === "individual" && players.filter(p=>p.memberType==="amateur").length > 0 && (
-        <div style={{marginTop:32}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+        <div className="mt-8">
+          <div className="font-display text-[11px] tracking-[3px] text-t3 mb-3.5 flex items-center gap-2.5">
             <span>── AMATEUR MEMBERS</span>
-            <button style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,background:"transparent",border:"1px solid var(--border2)",color:"var(--text3)",borderRadius:3,padding:"2px 10px",cursor:"pointer"}}
-              onClick={()=>setScreen("amateurs")}>VIEW ALL →</button>
+            <button
+              className="font-display text-[10px] tracking-[2px] bg-transparent border border-border2 text-t3 rounded-[3px] px-2.5 py-[2px] cursor-pointer"
+              onClick={()=>setScreen("amateurs")}>
+              VIEW ALL →
+            </button>
           </div>
-          <div className="card" style={{overflow:"hidden"}}>
+          <div className="card overflow-hidden">
             {players.filter(p=>p.memberType==="amateur").map((p,idx)=>(
-              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:"1px solid var(--border)"}}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <span style={{fontFamily:"'Bebas Neue'",fontSize:16,color:"var(--text3)",minWidth:28}}>{idx+1}</span>
+              <div key={p.id} className="flex justify-between items-center px-4 py-3.5 border-b border-border last:border-b-0">
+                <div className="flex items-center gap-3">
+                  <span className="font-display text-[16px] text-t3 min-w-[28px]">{idx+1}</span>
                   <div>
-                    <div style={{fontSize:15,fontWeight:600,color:"var(--text2)"}}>{p.name}</div>
-                    <div style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap}</div>
+                    <div className="text-[15px] font-semibold text-t2">{p.name}</div>
+                    <div className="text-[11px] text-t3">HCP {p.handicap}</div>
                   </div>
                 </div>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--gold)",border:"1px solid #c8a84a44",borderRadius:3,padding:"2px 8px"}}>AMATEUR</span>
+                <span className="font-display text-[10px] tracking-[2px] text-gold border border-[#c8a84a44] rounded-[3px] px-2 py-px">AMATEUR</span>
               </div>
             ))}
           </div>

@@ -39,36 +39,42 @@ export default function LoginView({ setScreen, setActiveHole }) {
   };
 
   return (
-    <div className="fade-up" style={{maxWidth:400,margin:"0 auto"}}>
-      <div style={{textAlign:"center",marginBottom:28}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--green)",marginBottom:8}}>NORTH STAR AMATEUR SERIES</div>
-        <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>PLAYER LOGIN</h2>
-        <p style={{fontSize:14,color:"var(--text2)",marginTop:8}}>Select your name and enter your PIN to access your scorecard.</p>
+    <div className="fade-up max-w-sm mx-auto px-4">
+      <div className="text-center mb-7">
+        <div className="font-display text-[13px] tracking-[4px] text-green mb-2">NORTH STAR AMATEUR SERIES</div>
+        <h2 className="font-display text-4xl tracking-[2px]">PLAYER LOGIN</h2>
+        <p className="text-[14px] text-t2 mt-2 leading-relaxed">Select your name and enter your PIN to access your scorecard.</p>
       </div>
 
       {step === "name" && (
-        <div className="card" style={{padding:28}}>
-          <div className="section-label" style={{marginBottom:8}}>YOUR NAME</div>
-          <select value={loginPid} onChange={e=>{setLoginPid(e.target.value);setLoginErr("");}}
-            style={{width:"100%",padding:"10px 12px",fontSize:15,background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:loginPid?"var(--text)":"var(--text3)",marginBottom:20}}>
+        <div className="card p-7">
+          <div className="section-label mb-2">YOUR NAME</div>
+          <select
+            value={loginPid}
+            onChange={e=>{ setLoginPid(e.target.value); setLoginErr(""); }}
+            className="w-full px-3 py-3 text-[15px] bg-bg3 border border-border2 rounded-[4px] mb-5 min-h-[44px]"
+            style={{ color: loginPid ? "var(--text)" : "var(--text3)" }}
+          >
             <option value="">Select your name...</option>
             {players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
-            disabled={!loginPid} onClick={()=>setStep("pin")}>
+          <button className="btn-gold w-full text-[14px] py-3.5" disabled={!loginPid} onClick={()=>setStep("pin")}>
             CONTINUE →
           </button>
         </div>
       )}
 
       {step === "pin" && (
-        <div className="card" style={{padding:28}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-            <button onClick={()=>{setStep("name");setLoginPin("");setLoginErr("");}}
-              style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer",padding:"0 4px"}}>←</button>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
+        <div className="card p-7">
+          <div className="flex items-center gap-2.5 mb-5">
+            <button
+              onClick={()=>{ setStep("name"); setLoginPin(""); setLoginErr(""); }}
+              className="bg-transparent border-none text-t3 text-lg cursor-pointer px-1">
+              ←
+            </button>
+            <div className="font-display text-[18px] tracking-[2px]">{selectedPlayer?.name}</div>
           </div>
-          <div className="section-label" style={{marginBottom:8}}>YOUR PIN</div>
+          <div className="section-label mb-2">YOUR PIN</div>
           <PinKeypad
             pin={loginPin}
             onChange={v => { setLoginPin(v); setLoginErr(""); }}
@@ -80,8 +86,9 @@ export default function LoginView({ setScreen, setActiveHole }) {
         </div>
       )}
 
-      <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"var(--text3)"}}>
-        New player? <span style={{color:"var(--gold)",cursor:"pointer"}} onClick={()=>setScreen("register")}>Register here →</span>
+      <div className="text-center mt-4 text-[13px] text-t3">
+        New player?{" "}
+        <span className="text-gold cursor-pointer" onClick={()=>setScreen("register")}>Register here →</span>
       </div>
     </div>
   );

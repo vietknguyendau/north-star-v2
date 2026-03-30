@@ -30,62 +30,76 @@ export default function AmateurRegisterView({ notify, setScreen }) {
   };
 
   return (
-    <div className="fade-up" style={{maxWidth:460,margin:"0 auto"}}>
+    <div className="fade-up max-w-lg mx-auto">
       {!amateurSuccess ? (
         <>
-          <div style={{textAlign:"center",marginBottom:28}}>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--gold)",marginBottom:8}}>JOIN AS AN AMATEUR</div>
-            <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>AMATEUR REGISTRATION</h2>
-            <p style={{fontSize:14,color:"var(--text2)",marginTop:8,lineHeight:1.7}}>
+          <div className="text-center mb-7">
+            <div className="font-display text-[13px] tracking-[4px] text-gold mb-2">JOIN AS AN AMATEUR</div>
+            <h2 className="font-display text-4xl tracking-[2px]">AMATEUR REGISTRATION</h2>
+            <p className="text-[14px] text-t2 mt-2 leading-relaxed">
               Not competing in the full season? Register as an amateur to be listed in the league directory and join one-off events.
             </p>
           </div>
-          <div className="card" style={{padding:28}}>
-            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+          <div className="card p-7">
+            <div className="flex flex-col gap-4">
               <div>
                 <div className="section-label">FULL NAME</div>
-                <input defaultValue={amateurForm.name} onBlur={e=>setAmateurForm(f=>({...f,name:e.target.value}))} placeholder="First Last" style={{width:"100%"}}/>
+                <input defaultValue={amateurForm.name} onBlur={e=>setAmateurForm(f=>({...f,name:e.target.value}))} placeholder="First Last" className="w-full"/>
               </div>
+
               <div>
                 <div className="section-label">EMAIL ADDRESS</div>
-                <input type="email" defaultValue={amateurForm.email} onBlur={e=>setAmateurForm(f=>({...f,email:e.target.value}))} placeholder="you@email.com" style={{width:"100%"}}/>
-                <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>For event invitations and announcements.</div>
+                <input type="email" defaultValue={amateurForm.email} onBlur={e=>setAmateurForm(f=>({...f,email:e.target.value}))} placeholder="you@email.com" className="w-full"/>
+                <div className="text-[11px] text-t3 mt-1">For event invitations and announcements.</div>
               </div>
+
               <div>
                 <div className="section-label">HANDICAP INDEX</div>
-                <input type="number" defaultValue={amateurForm.handicap} onBlur={e=>setAmateurForm(f=>({...f,handicap:e.target.value}))} placeholder="0" min="0" max="54" style={{width:"100%"}}/>
-                <div style={{fontSize:11,color:"var(--amber)",marginTop:5,lineHeight:1.4}}>⚠ Commissioner verifies before Event 1. Have your Grint screenshot ready.</div>
+                <input type="number" defaultValue={amateurForm.handicap} onBlur={e=>setAmateurForm(f=>({...f,handicap:e.target.value}))} placeholder="0" min="0" max="54" className="w-full"/>
+                <div className="text-[11px] text-amber mt-1 leading-snug">⚠ Commissioner verifies before Event 1. Have your Grint screenshot ready.</div>
               </div>
-              <div style={{display:"flex",gap:12}}>
-                <div style={{flex:1}}>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
                   <div className="section-label">YOUR PIN</div>
-                  <input type="password" maxLength={4} defaultValue={amateurForm.pin} onBlur={e=>setAmateurForm(f=>({...f,pin:e.target.value.replace(/\D/g,"")}))} placeholder="4 digits" style={{width:"100%",letterSpacing:6,textAlign:"center",fontSize:18}}/>
+                  <input type="password" maxLength={4} defaultValue={amateurForm.pin}
+                    onBlur={e=>setAmateurForm(f=>({...f,pin:e.target.value.replace(/\D/g,"")}))}
+                    placeholder="4 digits" className="w-full text-center" style={{letterSpacing:6,fontSize:18}}/>
                 </div>
-                <div style={{flex:1}}>
+                <div className="flex-1">
                   <div className="section-label">CONFIRM PIN</div>
-                  <input type="password" maxLength={4} defaultValue={amateurForm.pin2} onBlur={e=>setAmateurForm(f=>({...f,pin2:e.target.value.replace(/\D/g,"")}))} placeholder="4 digits" style={{width:"100%",letterSpacing:6,textAlign:"center",fontSize:18}}/>
+                  <input type="password" maxLength={4} defaultValue={amateurForm.pin2}
+                    onBlur={e=>setAmateurForm(f=>({...f,pin2:e.target.value.replace(/\D/g,"")}))}
+                    placeholder="4 digits" className="w-full text-center" style={{letterSpacing:6,fontSize:18}}/>
                 </div>
               </div>
-              <div style={{fontSize:12,color:"var(--text3)",fontStyle:"italic"}}>🔒 Your PIN protects your profile. Set it now so you can log in later.</div>
-              <div style={{padding:"10px 14px",background:"#1a1200",border:"1px solid #c8a84a33",borderRadius:4,display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:3,padding:"2px 8px"}}>AMATEUR</span>
-                <span style={{fontSize:12,color:"var(--text3)"}}>You'll appear in the Amateurs section of the league directory.</span>
+              <div className="text-[12px] text-t3 italic">🔒 Your PIN protects your profile. Set it now so you can log in later.</div>
+
+              <div className="p-3 rounded-[4px] flex items-center gap-2.5" style={{background:"#1a1200",border:"1px solid #c8a84a33"}}>
+                <span className="font-display text-[10px] tracking-[2px] text-gold border border-[--gold-dim] rounded-[3px] px-2 py-px shrink-0" style={{borderColor:"var(--gold-dim)"}}>AMATEUR</span>
+                <span className="text-[12px] text-t3">You'll appear in the Amateurs section of the league directory.</span>
               </div>
-              {amateurError && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"10px 14px",borderRadius:4}}>{amateurError}</div>}
-              <button className="btn-gold" style={{width:"100%",padding:13,fontSize:15,marginTop:4}} onClick={handleAmateurRegister}>REGISTER AS AMATEUR →</button>
+
+              {amateurError && (
+                <div className="text-[13px] text-red bg-[#2a0808] border border-[#4a1010] px-3.5 py-2.5 rounded-[4px]">{amateurError}</div>
+              )}
+              <button className="btn-gold w-full py-3.5 text-[15px] mt-1" onClick={handleAmateurRegister}>REGISTER AS AMATEUR →</button>
             </div>
           </div>
-          <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"var(--text3)"}}>
-            Competing in the full season? <span style={{color:"var(--gold)",cursor:"pointer"}} onClick={()=>setScreen("register")}>League registration →</span>
+
+          <div className="text-center mt-4 text-[13px] text-t3">
+            Competing in the full season?{" "}
+            <span className="text-gold cursor-pointer" onClick={()=>setScreen("register")}>League registration →</span>
           </div>
         </>
       ) : (
-        <div style={{textAlign:"center",paddingTop:40}}>
-          <div style={{fontSize:52,marginBottom:16}}>🏌️</div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:2,color:"var(--gold)",marginBottom:10}}>YOU'RE IN!</div>
-          <div style={{display:"inline-block",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:3,padding:"3px 12px",marginBottom:16}}>AMATEUR</div>
-          <p style={{fontSize:16,color:"var(--text2)",marginBottom:28,lineHeight:1.8}}>Welcome.<br/>You're registered as an amateur member.</p>
-          <button className="btn-ghost" style={{padding:"12px 32px",fontSize:14}} onClick={()=>setScreen("leaderboard")}>VIEW LEADERBOARD →</button>
+        <div className="text-center pt-10">
+          <div className="text-[52px] mb-4">🏌️</div>
+          <div className="font-display text-4xl tracking-[2px] text-gold mb-2.5">YOU'RE IN!</div>
+          <div className="inline-block font-display text-[11px] tracking-[3px] text-gold border border-[--gold-dim] rounded-[3px] px-3 py-[3px] mb-4" style={{borderColor:"var(--gold-dim)"}}>AMATEUR</div>
+          <p className="text-[16px] text-t2 mb-7 leading-relaxed">Welcome.<br/>You're registered as an amateur member.</p>
+          <button className="btn-ghost px-8 py-3 text-[14px]" onClick={()=>setScreen("leaderboard")}>VIEW LEADERBOARD →</button>
         </div>
       )}
     </div>

@@ -30,38 +30,36 @@ export default function SidebetsLogin({ notify, setScreen }) {
   };
 
   return (
-    <div style={{maxWidth:420,margin:"0 auto"}} className="fade-up">
-      <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:4,color:"var(--green)",marginBottom:4}}>PRIVATE</div>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:28,letterSpacing:2}}>SIDEBETS</div>
-        <div style={{fontSize:13,color:"var(--text3)",marginTop:6}}>Log in to view and create sidebets</div>
+    <div className="max-w-lg mx-auto fade-up">
+      <div className="text-center mb-6">
+        <div className="font-display text-[10px] tracking-[4px] text-green mb-1">PRIVATE</div>
+        <div className="font-display text-[28px] tracking-[2px]">SIDEBETS</div>
+        <div className="text-[13px] text-t3 mt-1.5">Log in to view and create sidebets</div>
       </div>
 
       {sbStep === "pick" && (
-        <div className="card" style={{padding:20}}>
-          <div className="section-label" style={{marginBottom:12}}>SELECT YOUR NAME</div>
-          <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
+        <div className="card p-5">
+          <div className="section-label mb-3">SELECT YOUR NAME</div>
+          <div className="flex flex-col gap-1.5 max-h-80 overflow-y-auto">
             {players.map(p=>(
               <button key={p.id}
-                className={`flight-chip ${sbPid===p.id?"active":""}`}
-                style={{textAlign:"left",padding:"12px 16px",fontSize:14,justifyContent:"space-between",display:"flex",alignItems:"center"}}
+                className={`flight-chip ${sbPid===p.id?"active":""} text-left px-4 py-3 text-[14px] justify-between flex items-center min-h-[48px]`}
                 onClick={()=>setSbPid(p.id)}>
                 <span>{p.name}</span>
-                <span style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap}</span>
+                <span className="text-[11px] text-t3">HCP {p.handicap}</span>
               </button>
             ))}
           </div>
-          <button className="btn-gold" style={{width:"100%",marginTop:14,fontSize:13}}
-            disabled={!sbPid} onClick={()=>setSbStep("pin")}>
+          <button className="btn-gold w-full mt-3.5 text-[13px]" disabled={!sbPid} onClick={()=>setSbStep("pin")}>
             CONTINUE →
           </button>
         </div>
       )}
 
       {sbStep === "pin" && (
-        <div className="card" style={{padding:24,textAlign:"center"}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2,marginBottom:4}}>{sbPlayer?.name}</div>
-          <div style={{fontSize:13,color:"var(--text3)",marginBottom:20}}>Enter your PIN to access sidebets</div>
+        <div className="card p-6 text-center">
+          <div className="font-display text-[22px] tracking-[2px] mb-1">{sbPlayer?.name}</div>
+          <div className="text-[13px] text-t3 mb-5">Enter your PIN to access sidebets</div>
           <PinKeypad
             pin={sbPin}
             onChange={setSbPin}
@@ -69,7 +67,10 @@ export default function SidebetsLogin({ notify, setScreen }) {
             onSubmit={verifySbPin}
             submitLabel="VERIFY →"
           />
-          <button className="btn-ghost" style={{fontSize:12,marginTop:4}} onClick={()=>{ setSbStep("pick"); setSbPin(""); setSbErr(""); }}>← Back</button>
+          <button className="btn-ghost text-[12px] mt-1"
+            onClick={()=>{ setSbStep("pick"); setSbPin(""); setSbErr(""); }}>
+            ← Back
+          </button>
         </div>
       )}
     </div>

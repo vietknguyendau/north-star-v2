@@ -26,13 +26,16 @@ export default function CourseView({ saveCourse, notify }) {
   };
 
   return (
-    <div className="fade-up" style={{maxWidth:820}}>
+    <div className="fade-up max-w-3xl">
       {/* Scorecard modal */}
       {showScModal && (course?.scorecardImage||course?.scorecardPdf) && (
         <div className="modal-bg" onClick={()=>setShowScModal(false)}>
-          <div style={{background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:8,padding:20,maxWidth:"92vw",maxHeight:"90vh",overflow:"auto"}} onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <span style={{fontFamily:"'Bebas Neue'",letterSpacing:2,fontSize:16}}>{course?.name} — Official Scorecard</span>
+          <div
+            className="bg-bg2 border border-border2 rounded-lg p-5 overflow-auto"
+            style={{ maxWidth:"92vw", maxHeight:"90vh" }}
+            onClick={e=>e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-3">
+              <span className="font-display tracking-[2px] text-[16px]">{course?.name} — Official Scorecard</span>
               <button className="btn-ghost btn-sm" onClick={()=>setShowScModal(false)}>✕ Close</button>
             </div>
             {course.scorecardImage && <img src={course.scorecardImage} alt="Scorecard" style={{maxWidth:"80vw",maxHeight:"76vh",objectFit:"contain",display:"block"}}/>}
@@ -42,52 +45,52 @@ export default function CourseView({ saveCourse, notify }) {
       )}
 
       <div className="section-label">── COURSE INFORMATION</div>
-      <div className="card" style={{padding:24,marginBottom:24}}>
-        <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:16,marginBottom:20}}>
+      <div className="card p-6 mb-6">
+        <div className="flex justify-between flex-wrap gap-4 mb-5">
           <div>
-            <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>{course?.name}</h2>
-            <div style={{fontSize:14,color:"var(--text3)"}}>{course?.city}</div>
+            <h2 className="font-display text-4xl tracking-[2px]">{course?.name}</h2>
+            <div className="text-[14px] text-t3">{course?.city}</div>
           </div>
-          <div style={{display:"flex",gap:28}}>
+          <div className="flex gap-7">
             {[["PAR",totalPar,"var(--green)"],["SLOPE",course?.slope,"var(--text)"],["RATING",course?.rating,"var(--gold)"]].map(([l,v,c])=>(
-              <div key={l} style={{textAlign:"center"}}>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:28,color:c}}>{v}</div>
-                <div style={{fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>{l}</div>
+              <div key={l} className="text-center">
+                <div className="font-display text-[28px]" style={{color:c}}>{v}</div>
+                <div className="font-display text-[10px] tracking-[2px] text-t3">{l}</div>
               </div>
             ))}
           </div>
         </div>
-        <p style={{fontSize:15,color:"var(--text2)",lineHeight:1.8,fontStyle:"italic",borderLeft:"2px solid var(--gold-dim)",paddingLeft:16}}>{course?.description}</p>
+        <p className="text-[15px] text-t2 leading-relaxed italic pl-4" style={{borderLeft:"2px solid var(--gold-dim)"}}>{course?.description}</p>
       </div>
 
       <div className="section-label">── HOLE-BY-HOLE</div>
-      <div className="card" style={{overflow:"hidden",marginBottom:24}}>
+      <div className="card overflow-hidden mb-6">
         {[{start:0,label:"FRONT NINE"},{start:9,label:"BACK NINE"}].map(({start,label})=>(
-          <div key={label} style={{overflowX:"auto",padding:"16px 16px 12px",borderBottom:"1px solid var(--border)"}}>
-            <div style={{fontFamily:"'Bebas Neue'",letterSpacing:2,fontSize:11,color:"var(--green-dim)",marginBottom:8}}>{label}</div>
-            <table style={{borderCollapse:"collapse",fontSize:12,width:"100%"}}>
+          <div key={label} className="overflow-x-auto px-4 pt-4 pb-3 border-b border-border last:border-b-0" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div className="font-display tracking-[2px] text-[11px] text-green-dim mb-2">{label}</div>
+            <table style={{ borderCollapse:"collapse", fontSize:12, minWidth:"max-content", width:"100%" }}>
               <thead>
-                <tr style={{color:"var(--text3)",fontFamily:"'Bebas Neue'",letterSpacing:1,fontSize:10}}>
-                  <td style={{padding:"4px 8px",minWidth:60}}>HOLE</td>
-                  {Array.from({length:9},(_,i)=><td key={i} style={{textAlign:"center",padding:"4px 5px",minWidth:36}}>{start+i+1}</td>)}
-                  <td style={{textAlign:"center",padding:"4px 8px",background:"var(--bg3)",minWidth:40}}>TOT</td>
+                <tr className="font-display text-[10px] tracking-[1px] text-t3">
+                  <td className="py-1 px-2 min-w-[60px]">HOLE</td>
+                  {Array.from({length:9},(_,i)=><td key={i} className="text-center py-1 px-1 min-w-[36px]">{start+i+1}</td>)}
+                  <td className="text-center py-1 px-2 bg-bg3 min-w-[40px]">TOT</td>
                 </tr>
               </thead>
               <tbody>
-                <tr style={{color:"var(--text3)",fontSize:12}}>
-                  <td style={{padding:"4px 8px"}}>Yards</td>
-                  {yards.slice(start,start+9).map((y,i)=><td key={i} style={{textAlign:"center",padding:"4px 5px"}}>{y}</td>)}
-                  <td style={{textAlign:"center",background:"var(--bg3)",fontWeight:600}}>{yards.slice(start,start+9).reduce((a,b)=>a+b,0)}</td>
+                <tr className="text-t3 text-[12px]">
+                  <td className="py-1 px-2">Yards</td>
+                  {yards.slice(start,start+9).map((y,i)=><td key={i} className="text-center py-1 px-1">{y}</td>)}
+                  <td className="text-center bg-bg3 font-semibold">{yards.slice(start,start+9).reduce((a,b)=>a+b,0)}</td>
                 </tr>
-                <tr style={{color:"var(--text3)",fontSize:11}}>
-                  <td style={{padding:"4px 8px"}}>HCP</td>
-                  {HCP_STROKES.slice(start,start+9).map((h,i)=><td key={i} style={{textAlign:"center",padding:"4px 5px"}}>{h}</td>)}
-                  <td style={{background:"var(--bg3)"}}/>
+                <tr className="text-t3 text-[11px]">
+                  <td className="py-1 px-2">HCP</td>
+                  {HCP_STROKES.slice(start,start+9).map((h,i)=><td key={i} className="text-center py-1 px-1">{h}</td>)}
+                  <td className="bg-bg3"/>
                 </tr>
-                <tr style={{color:"var(--green)"}}>
-                  <td style={{padding:"5px 8px",fontWeight:600,fontSize:13}}>Par</td>
-                  {pars.slice(start,start+9).map((p,i)=><td key={i} style={{textAlign:"center",padding:"5px 5px",fontWeight:600,fontSize:14}}>{p}</td>)}
-                  <td style={{textAlign:"center",fontWeight:700,background:"var(--bg3)",fontSize:14}}>{pars.slice(start,start+9).reduce((a,b)=>a+b,0)}</td>
+                <tr className="text-green">
+                  <td className="py-1.5 px-2 font-semibold text-[13px]">Par</td>
+                  {pars.slice(start,start+9).map((p,i)=><td key={i} className="text-center py-1.5 px-1 font-semibold text-[14px]">{p}</td>)}
+                  <td className="text-center font-bold bg-bg3 text-[14px]">{pars.slice(start,start+9).reduce((a,b)=>a+b,0)}</td>
                 </tr>
               </tbody>
             </table>
@@ -96,30 +99,41 @@ export default function CourseView({ saveCourse, notify }) {
       </div>
 
       <div className="section-label">── OFFICIAL SCORECARD</div>
-      <div className="card" style={{padding:20}}>
+      <div className="card p-5">
         {course?.scorecardImage || course?.scorecardPdf ? (
           <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <span style={{fontSize:14,color:"var(--text2)"}}>📄 {course.scorecardName||"Scorecard"}</span>
-              <div style={{display:"flex",gap:8}}>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[14px] text-t2">📄 {course.scorecardName||"Scorecard"}</span>
+              <div className="flex gap-2">
                 <button className="btn-ghost btn-sm" onClick={()=>setShowScModal(true)}>View Full</button>
                 <button className="btn-danger btn-sm" onClick={async()=>{ const u={...course,scorecardImage:null,scorecardPdf:null}; setCourse(u); await saveCourse(u); }}>Remove</button>
               </div>
             </div>
-            {course.scorecardImage && <img src={course.scorecardImage} alt="Scorecard" style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:4,border:"1px solid var(--border)",cursor:"pointer"}} onClick={()=>setShowScModal(true)}/>}
-            {course.scorecardPdf && <div style={{textAlign:"center",padding:24,background:"var(--bg3)",borderRadius:4}}><div style={{fontSize:32,marginBottom:8}}>📋</div><div style={{fontSize:13,color:"var(--text2)",marginBottom:10}}>PDF: {course.scorecardName}</div><button className="btn-ghost btn-sm" onClick={()=>setShowScModal(true)}>Open PDF</button></div>}
+            {course.scorecardImage && (
+              <img src={course.scorecardImage} alt="Scorecard"
+                className="w-full rounded-[4px] border border-border cursor-pointer"
+                style={{ maxHeight:280, objectFit:"contain" }}
+                onClick={()=>setShowScModal(true)}/>
+            )}
+            {course.scorecardPdf && (
+              <div className="text-center p-6 bg-bg3 rounded-[4px]">
+                <div className="text-[32px] mb-2">📋</div>
+                <div className="text-[13px] text-t2 mb-2.5">PDF: {course.scorecardName}</div>
+                <button className="btn-ghost btn-sm" onClick={()=>setShowScModal(true)}>Open PDF</button>
+              </div>
+            )}
           </div>
         ) : (
           <>
             <div className="upload-zone" onClick={()=>fileRef.current.click()}>
-              <div style={{fontSize:36,marginBottom:12}}>⛳</div>
-              <div style={{fontSize:16,color:"var(--text2)",marginBottom:6}}>Upload Course Scorecard</div>
-              <div style={{fontSize:12,color:"var(--text3)"}}>JPG · PNG · PDF · Click to browse</div>
+              <div className="text-4xl mb-3">⛳</div>
+              <div className="text-[16px] text-t2 mb-1.5">Upload Course Scorecard</div>
+              <div className="text-[12px] text-t3">JPG · PNG · PDF · Click to browse</div>
             </div>
-            <button className="btn-ghost btn-sm" style={{marginTop:12}} onClick={()=>fileRef.current.click()}>+ Upload File</button>
+            <button className="btn-ghost btn-sm mt-3" onClick={()=>fileRef.current.click()}>+ Upload File</button>
           </>
         )}
-        <input ref={fileRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleFileUpload}/>
+        <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload}/>
       </div>
     </div>
   );

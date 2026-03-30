@@ -77,37 +77,53 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
       const thru = result?.thru || 0;
       return {...p, gross, net, thru};
     }).sort((a,b)=>a.net-b.net);
+
     if (!rows.length) return (
-      <div style={{padding:"20px",textAlign:"center",color:"var(--text3)",fontSize:13,fontStyle:"italic"}}>
+      <div className="py-5 text-center text-t3 text-[13px] italic">
         No scores yet — be the first on the board.
       </div>
     );
     return (
-      <div style={{borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}>
-        <div style={{display:"grid",gridTemplateColumns:"44px 1fr 48px 58px 62px 68px",background:"var(--bg3)",padding:"8px 14px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
-          <span>POS</span><span>PLAYER</span><span style={{textAlign:"center"}}>THRU</span>
-          <span style={{textAlign:"center"}}>GROSS</span><span style={{textAlign:"center"}}>+/-</span><span style={{textAlign:"center"}}>NET</span>
-        </div>
-        {rows.map((p,idx)=>{
-          const parThru = pars.slice(0,p.thru).reduce((a,b)=>a+b,0);
-          const overPar = p.thru>0 ? p.gross - parThru : null;
-          return (
-          <div key={p.id} style={{display:"grid",gridTemplateColumns:"44px 1fr 48px 58px 62px 68px",padding:"11px 14px",borderBottom:"1px solid var(--border)",
-            borderLeft:idx===0?"3px solid var(--green)":"3px solid transparent"}}>
-            <span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
-              {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
-            </span>
-            <div>
-              <div style={{fontSize:15,fontWeight:600,color:"var(--text2)"}}>{p.name}</div>
-              <div style={{fontSize:10,color:"var(--text3)"}}>HCP {p.handicap}</div>
-            </div>
-            <div style={{textAlign:"center",fontSize:14,color:p.thru===18?"var(--green)":"var(--text)"}}>{p.thru===18?"F":p.thru||"—"}</div>
-            <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,color:"var(--text3)"}}>{p.gross||"—"}</div>
-            <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:14,color:overPar>0?"var(--amber)":overPar<0?"var(--gold)":"var(--text)"}}>{overPar!==null?toPM(overPar):"—"}</div>
-            <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:16,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{toPM(p.net)}</div>
+      <div
+        className="-mx-4 md:mx-0 overflow-x-auto rounded-[6px] border border-border"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        <div style={{ minWidth: 380 }}>
+          <div
+            className="grid bg-bg3 px-3.5 py-2 font-display text-[10px] tracking-[2px] text-t3"
+            style={{ gridTemplateColumns: "44px 1fr 48px 58px 62px 68px" }}
+          >
+            <span>POS</span><span>PLAYER</span>
+            <span className="text-center">THRU</span>
+            <span className="text-center">GROSS</span>
+            <span className="text-center">+/-</span>
+            <span className="text-center">NET</span>
           </div>
-          );
-        })}
+          {rows.map((p,idx)=>{
+            const parThru = pars.slice(0,p.thru).reduce((a,b)=>a+b,0);
+            const overPar = p.thru>0 ? p.gross - parThru : null;
+            return (
+              <div key={p.id}
+                className="grid px-3.5 py-2.5 border-b border-border last:border-b-0 items-center"
+                style={{
+                  gridTemplateColumns: "44px 1fr 48px 58px 62px 68px",
+                  borderLeft: idx===0 ? "3px solid var(--green)" : "3px solid transparent",
+                }}>
+                <span className="font-display text-[18px]" style={{color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
+                  {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
+                </span>
+                <div>
+                  <div className="text-[15px] font-semibold text-t2">{p.name}</div>
+                  <div className="font-display text-[10px] text-t3">HCP {p.handicap}</div>
+                </div>
+                <div className="text-center text-[14px]" style={{color:p.thru===18?"var(--green)":"var(--text)"}}>{p.thru===18?"F":p.thru||"—"}</div>
+                <div className="text-center font-mono text-[14px] text-t3">{p.gross||"—"}</div>
+                <div className="text-center font-mono text-[14px]" style={{color:overPar>0?"var(--amber)":overPar<0?"var(--gold)":"var(--text)"}}>{overPar!==null?toPM(overPar):"—"}</div>
+                <div className="text-center font-mono text-[16px] font-bold" style={{color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{toPM(p.net)}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -117,7 +133,7 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
       ? (t.hasPassword ? players.filter(p=>p.oneOffId===t.id) : players)
       : (t.snapshot || []);
     if (!joined.length) return (
-      <div style={{padding:"16px",textAlign:"center",color:"var(--text3)",fontSize:13,fontStyle:"italic"}}>No players yet.</div>
+      <div className="py-4 text-center text-t3 text-[13px] italic">No players yet.</div>
     );
     const rows = isLive
       ? joined.map(p=>{
@@ -137,53 +153,59 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
     };
 
     return (
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div className="flex flex-col gap-3">
         {rows.map((p, idx) => {
           const hasScores = p.scores?.some(Boolean);
           return (
-            <div key={p.id} style={{background:"var(--bg3)",border:`1px solid ${idx===0?"var(--green-dim)":"var(--border)"}`,borderRadius:8,overflow:"hidden"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:hasScores?"1px solid var(--border)":"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <span style={{fontFamily:"'Bebas Neue'",fontSize:20,color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)",minWidth:36}}>
+            <div key={p.id}
+              className="rounded-lg overflow-hidden"
+              style={{ background:"var(--bg3)", border:`1px solid ${idx===0?"var(--green-dim)":"var(--border)"}` }}>
+              <div className="flex justify-between items-center px-4 py-3" style={{borderBottom:hasScores?"1px solid var(--border)":"none"}}>
+                <div className="flex items-center gap-3">
+                  <span className="font-display text-xl min-w-[36px]" style={{color:idx===0?"var(--green)":idx===1?"#90b0b8":idx===2?"#c08050":"var(--text3)"}}>
                     {idx===0?"1ST":idx===1?"2ND":idx===2?"3RD":`${idx+1}`}
                   </span>
                   <div>
-                    <div style={{fontSize:16,fontWeight:600,color:"var(--text)"}}>{p.name}</div>
-                    <div style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap} · Thru {p.thru===18?"F (Final)":p.thru||"—"}</div>
+                    <div className="text-[16px] font-semibold text-text">{p.name}</div>
+                    <div className="text-[11px] text-t3">HCP {p.handicap} · Thru {p.thru===18?"F (Final)":p.thru||"—"}</div>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:16,alignItems:"center"}}>
-                  {p.gross > 0 && <div style={{textAlign:"center"}}>
-                    <div style={{fontFamily:"'DM Mono'",fontSize:16,color:"var(--text3)"}}>{p.gross}</div>
-                    <div style={{fontSize:9,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>GROSS</div>
-                  </div>}
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontFamily:"'DM Mono'",fontSize:20,fontWeight:700,color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{p.net!==0||p.thru>0?toPM(p.net):"—"}</div>
-                    <div style={{fontSize:9,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>NET</div>
+                <div className="flex gap-4 items-center">
+                  {p.gross > 0 && (
+                    <div className="text-center">
+                      <div className="font-mono text-[16px] text-t3">{p.gross}</div>
+                      <div className="font-display text-[9px] tracking-[2px] text-t3">GROSS</div>
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <div className="font-mono text-[20px] font-bold" style={{color:p.net<0?"var(--green-bright)":p.net>0?"var(--amber)":"var(--text)"}}>{p.net!==0||p.thru>0?toPM(p.net):"—"}</div>
+                    <div className="font-display text-[9px] tracking-[2px] text-t3">NET</div>
                   </div>
                 </div>
               </div>
               {hasScores && (
-                <div style={{overflowX:"auto",padding:"10px 12px"}}>
-                  <div style={{display:"flex",gap:4,minWidth:"max-content"}}>
+                <div className="overflow-x-auto px-3 py-2.5" style={{ WebkitOverflowScrolling: "touch" }}>
+                  <div className="flex gap-1 min-w-max">
                     {p.scores.map((s, hi) => (
-                      <div key={hi} style={{textAlign:"center",minWidth:28}}>
-                        <div style={{fontSize:9,color:"var(--text3)",fontFamily:"'Bebas Neue'",marginBottom:2}}>{hi+1}</div>
-                        <div style={{width:28,height:28,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",
-                          fontSize:13,fontFamily:"'DM Mono'",fontWeight:600,
-                          background:s?"var(--bg4)":"transparent",
-                          color:s?scoreColor(s,pars[hi]):"var(--border2)",
-                          border:s?`1px solid ${scoreColor(s,pars[hi])}44`:"1px solid var(--border)"}}>
+                      <div key={hi} className="text-center min-w-[28px]">
+                        <div className="font-display text-[9px] text-t3 mb-0.5">{hi+1}</div>
+                        <div
+                          className="w-7 h-7 rounded-[4px] flex items-center justify-center font-mono text-[13px] font-semibold"
+                          style={{
+                            background: s ? "var(--bg4)" : "transparent",
+                            color: s ? scoreColor(s,pars[hi]) : "var(--border2)",
+                            border: s ? `1px solid ${scoreColor(s,pars[hi])}44` : "1px solid var(--border)",
+                          }}>
                           {s||"·"}
                         </div>
-                        <div style={{fontSize:8,color:"var(--text3)",marginTop:2}}>{pars[hi]}</div>
+                        <div className="text-[8px] text-t3 mt-0.5">{pars[hi]}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
               {!hasScores && isLive && (
-                <div style={{padding:"8px 16px",fontSize:11,color:"var(--text3)",fontStyle:"italic"}}>No scores entered yet</div>
+                <div className="px-4 py-2 text-[11px] text-t3 italic">No scores entered yet</div>
               )}
             </div>
           );
@@ -192,45 +214,46 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
     );
   };
 
-  // LOGIN VIEW for a specific tournament
+  // ── LOGIN VIEW ───────────────────────────────────────────────────────────
   if (tabStep === "login" && selTourney) {
     return (
-      <div className="fade-up" style={{maxWidth:420,margin:"0 auto"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>{setTabStep("list");setTStep("name");setTLoginPid("");setTLoginPin("");setTLoginErr("");setTPwInput("");setTPwErr("");}}
-            style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
+      <div className="fade-up max-w-sm mx-auto">
+        <div className="flex items-center gap-2.5 mb-6">
+          <button
+            onClick={()=>{ setTabStep("list"); setTStep("name"); setTLoginPid(""); setTLoginPin(""); setTLoginErr(""); setTPwInput(""); setTPwErr(""); }}
+            className="bg-transparent border-none text-t3 text-lg cursor-pointer">←</button>
           <div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:selTourney.isActive?"var(--green)":"var(--text3)"}}>
+            <div className="font-display text-[11px] tracking-[3px]" style={{color:selTourney.isActive?"var(--green)":"var(--text3)"}}>
               {selTourney.isActive?"🟢 IN PROGRESS":"⛳ TOURNAMENT"}
             </div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:22,letterSpacing:2}}>{selTourney.title}</div>
-            <div style={{fontSize:12,color:"var(--text3)"}}>{selTourney.date}{selTourney.course?` · ${selTourney.course}`:""}</div>
+            <div className="font-display text-[22px] tracking-[2px]">{selTourney.title}</div>
+            <div className="text-[12px] text-t3">{selTourney.date}{selTourney.course?` · ${selTourney.course}`:""}</div>
           </div>
         </div>
 
         {tStep === "name" && (
-          <div className="card" style={{padding:28}}>
-            <div className="section-label" style={{marginBottom:8}}>YOUR NAME</div>
-            <select value={tLoginPid} onChange={e=>{setTLoginPid(e.target.value);setTLoginErr("");}}
-              style={{width:"100%",padding:"10px 12px",fontSize:15,background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4,color:tLoginPid?"var(--text)":"var(--text3)",marginBottom:20}}>
+          <div className="card p-7">
+            <div className="section-label mb-2">YOUR NAME</div>
+            <select value={tLoginPid} onChange={e=>{ setTLoginPid(e.target.value); setTLoginErr(""); }}
+              className="w-full px-3 py-3 text-[15px] bg-bg3 border border-border2 rounded-[4px] mb-5 min-h-[44px]"
+              style={{ color: tLoginPid ? "var(--text)" : "var(--text3)" }}>
               <option value="">Select your name...</option>
               {players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
-              disabled={!tLoginPid} onClick={()=>setTStep("pin")}>
+            <button className="btn-gold w-full text-[14px] py-3.5" disabled={!tLoginPid} onClick={()=>setTStep("pin")}>
               CONTINUE →
             </button>
           </div>
         )}
 
         {tStep === "pin" && (
-          <div className="card" style={{padding:28}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-              <button onClick={()=>{setTStep("name");setTLoginPin("");setTLoginErr("");}}
-                style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
+          <div className="card p-7">
+            <div className="flex items-center gap-2.5 mb-5">
+              <button onClick={()=>{ setTStep("name"); setTLoginPin(""); setTLoginErr(""); }}
+                className="bg-transparent border-none text-t3 text-lg cursor-pointer">←</button>
+              <div className="font-display text-[18px] tracking-[2px]">{selectedPlayer?.name}</div>
             </div>
-            <div className="section-label" style={{marginBottom:8}}>YOUR PIN</div>
+            <div className="section-label mb-2">YOUR PIN</div>
             <PinKeypad
               pin={tLoginPin}
               onChange={v => { setTLoginPin(v); setTLoginErr(""); }}
@@ -243,22 +266,23 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
         )}
 
         {tStep === "password" && (
-          <div className="card" style={{padding:28}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-              <button onClick={()=>{setTStep("pin");setTLoginPin("");setTPwInput("");setTPwErr("");}}
-                style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:18,cursor:"pointer"}}>←</button>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2}}>{selectedPlayer?.name}</div>
+          <div className="card p-7">
+            <div className="flex items-center gap-2.5 mb-5">
+              <button onClick={()=>{ setTStep("pin"); setTLoginPin(""); setTPwInput(""); setTPwErr(""); }}
+                className="bg-transparent border-none text-t3 text-lg cursor-pointer">←</button>
+              <div className="font-display text-[18px] tracking-[2px]">{selectedPlayer?.name}</div>
             </div>
-            <div style={{textAlign:"center",marginBottom:20}}>
-              <div style={{fontSize:32,marginBottom:8}}>🔒</div>
-              <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,marginBottom:6}}>{selTourney.title}</div>
-              <div style={{fontSize:13,color:"var(--text3)"}}>This tournament is invite-only. Enter the password your commissioner shared with you.</div>
+            <div className="text-center mb-5">
+              <div className="text-[32px] mb-2">🔒</div>
+              <div className="font-display text-[16px] tracking-[2px] mb-1.5">{selTourney.title}</div>
+              <div className="text-[13px] text-t3">This tournament is invite-only. Enter the password your commissioner shared with you.</div>
             </div>
-            <input value={tPwInput} onChange={e=>{setTPwInput(e.target.value);setTPwErr("");}}
-              placeholder="Tournament password" style={{width:"100%",fontSize:15,marginBottom:8}}/>
-            {tPwErr && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"8px 12px",borderRadius:4,marginBottom:12}}>{tPwErr}</div>}
-            <button className="btn-gold" style={{width:"100%",fontSize:14,padding:13}}
-              onClick={handleJoinWithPassword} disabled={!tPwInput.trim()}>
+            <input value={tPwInput} onChange={e=>{ setTPwInput(e.target.value); setTPwErr(""); }}
+              placeholder="Tournament password" className="w-full text-[15px] mb-2"/>
+            {tPwErr && (
+              <div className="text-[13px] text-red bg-[#2a0808] border border-[#4a1010] px-3 py-2 rounded-[4px] mb-3">{tPwErr}</div>
+            )}
+            <button className="btn-gold w-full text-[14px] py-3.5" onClick={handleJoinWithPassword} disabled={!tPwInput.trim()}>
               JOIN TOURNAMENT →
             </button>
           </div>
@@ -267,52 +291,57 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
     );
   }
 
-  // FULL LEADERBOARD VIEW
+  // ── LEADERBOARD VIEW ─────────────────────────────────────────────────────
   if (tabStep === "leaderboard" && selTourney) {
     const isLive = !!selTourney.isActive;
     return (
       <div className="fade-up">
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+        <div className="flex items-center gap-3 mb-5">
           <button onClick={()=>{ setTabStep("list"); setSelTourney(null); setShowPlayers(false); }}
-            style={{background:"transparent",border:"none",color:"var(--text3)",fontSize:22,cursor:"pointer"}}>←</button>
-          <div style={{flex:1}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+            className="bg-transparent border-none text-t3 text-[22px] cursor-pointer">←</button>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-0.5">
               {isLive && <span style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",display:"inline-block",animation:"pulse2 1.2s infinite"}}/>}
-              <span style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:isLive?"var(--green)":"var(--text3)"}}>
+              <span className="font-display text-[11px] tracking-[3px]" style={{color:isLive?"var(--green)":"var(--text3)"}}>
                 {isLive?"LIVE · IN PROGRESS":"FINAL RESULTS"}
               </span>
             </div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:26,letterSpacing:2,lineHeight:1}}>{selTourney.title}</div>
-            <div style={{fontSize:12,color:"var(--text3)",marginTop:3}}>
+            <div className="font-display text-[26px] tracking-[2px] leading-none">{selTourney.title}</div>
+            <div className="text-[12px] text-t3 mt-0.5">
               {selTourney.date}{selTourney.course?` · ${selTourney.course}`:""}
               {selTourney.courseDetails?` · Par ${selTourney.courseDetails.par}`:""}
             </div>
           </div>
           {isLive && (
-            <button className="btn-gold" style={{fontSize:12,padding:"9px 16px",letterSpacing:2,whiteSpace:"nowrap"}}
+            <button className="btn-gold text-[12px] py-2 px-4 tracking-[2px] whitespace-nowrap"
               onClick={()=>{ setTabStep("login"); setTStep("name"); }}>
               ENTER SCORES →
             </button>
           )}
         </div>
-        <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:"1px solid var(--border)"}}>
+
+        {/* Sub-tab strip */}
+        <div className="flex border-b border-border mb-5" style={{ marginBottom: -1 }}>
           {[["board","🏆 LEADERBOARD"],["players","👤 PLAYERS"]].map(([val,label])=>(
-            <div key={val} onClick={()=>setShowPlayers(val==="players")}
-              style={{padding:"9px 18px",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,cursor:"pointer",
-                color:((val==="players")===showPlayers)?"var(--gold)":"var(--text3)",
-                borderBottom:((val==="players")===showPlayers)?"2px solid var(--gold)":"2px solid transparent",
-                marginBottom:-1}}>
+            <button key={val} onClick={()=>setShowPlayers(val==="players")}
+              className="px-4 py-2.5 font-display text-[12px] tracking-[2px] cursor-pointer bg-transparent border-none transition-all duration-150"
+              style={{
+                color: ((val==="players")===showPlayers) ? "var(--gold)" : "var(--text3)",
+                borderBottom: ((val==="players")===showPlayers) ? "2px solid var(--gold)" : "2px solid transparent",
+                marginBottom: -1,
+              }}>
               {label}
-            </div>
+            </button>
           ))}
         </div>
+
         {!showPlayers && <TourneyLeaderboard t={selTourney}/>}
         {showPlayers && <PlayerRoster t={selTourney} isLive={isLive}/>}
       </div>
     );
   }
 
-  // LIST VIEW
+  // ── LIST VIEW ────────────────────────────────────────────────────────────
   const activeTourneys = activeOnOffs.length > 0
     ? activeOnOffs
     : (activeOneOff ? [{ ...activeOneOff, isActive: true }] : []);
@@ -320,44 +349,46 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
 
   return (
     <div className="fade-up">
-      <div style={{marginBottom:24}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:4,color:"var(--text3)",marginBottom:4}}>NORTH STAR AMATEUR SERIES</div>
-        <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2,marginBottom:4}}>TOURNAMENTS</h2>
-        <p style={{fontSize:13,color:"var(--text3)"}}>Tap any tournament to view the full leaderboard or enter scores.</p>
+      <div className="mb-6">
+        <div className="font-display text-[11px] tracking-[4px] text-t3 mb-1">NORTH STAR AMATEUR SERIES</div>
+        <h2 className="font-display text-4xl tracking-[2px] mb-1">TOURNAMENTS</h2>
+        <p className="text-[13px] text-t3">Tap any tournament to view the full leaderboard or enter scores.</p>
       </div>
 
       {activeTourneys.length > 0 && (
-        <div style={{marginBottom:28}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+        <div className="mb-7">
+          <div className="font-display text-[11px] tracking-[3px] text-green mb-3 flex items-center gap-2">
             <span style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",display:"inline-block",animation:"pulse2 1.2s infinite"}}/>
             {activeTourneys.length} OPEN NOW
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="flex flex-col gap-3">
             {activeTourneys.map(t => {
               const tPlayers = t.hasPassword
                 ? players.filter(p=>p.oneOffId===t.id && p.scores?.some(Boolean))
                 : players.filter(p=>p.memberType!=="amateur" && p.scores?.some(Boolean));
               return (
-                <div key={t.id} style={{background:"#060e06",border:"2px solid var(--green-dim)",borderRadius:10,overflow:"hidden"}}>
-                  <div style={{padding:"18px 20px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:14}}>
-                      <div style={{flex:1}}>
-                        <div style={{fontFamily:"'Bebas Neue'",fontSize:24,letterSpacing:2,color:"var(--text)"}}>{t.title}</div>
-                        <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>
+                <div key={t.id} className="rounded-[10px] overflow-hidden" style={{background:"#060e06",border:"2px solid var(--green-dim)"}}>
+                  <div className="p-4 md:p-5">
+                    <div className="flex justify-between items-start flex-wrap gap-2.5 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-display text-[24px] tracking-[2px] text-text">{t.title}</div>
+                        <div className="text-[12px] text-t3 mt-0.5">
                           {t.date}{t.course?` · ${t.course}`:""}
                           {t.courseDetails?` · Par ${t.courseDetails.par}`:""}
                         </div>
-                        {t.notes && <div style={{fontSize:12,color:"var(--text2)",marginTop:4,fontStyle:"italic"}}>{t.notes}</div>}
-                        <div style={{fontSize:11,color:"var(--text3)",marginTop:6}}>{tPlayers.length} player{tPlayers.length!==1?"s":""} on the board</div>
+                        {t.notes && <div className="text-[12px] text-t2 mt-1 italic">{t.notes}</div>}
+                        <div className="text-[11px] text-t3 mt-1.5">{tPlayers.length} player{tPlayers.length!==1?"s":""} on the board</div>
                       </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-                        {t.hasPassword && <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--text3)",border:"1px solid var(--border2)",borderRadius:3,padding:"2px 8px"}}>🔒 INVITE ONLY</span>}
-                        <button className="btn-gold" style={{fontSize:12,padding:"9px 18px",letterSpacing:2}}
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        {t.hasPassword && (
+                          <span className="font-display text-[10px] tracking-[2px] text-t3 border border-border2 rounded-[3px] px-2 py-px">🔒 INVITE ONLY</span>
+                        )}
+                        <button className="btn-gold text-[12px] py-2.5 px-4 tracking-[2px]"
                           onClick={()=>{ setSelTourney(t); setTabStep("login"); setTStep("name"); }}>
                           ENTER SCORES →
                         </button>
-                        <button style={{fontSize:11,padding:"6px 14px",fontFamily:"'Bebas Neue'",letterSpacing:2,
-                          background:"transparent",border:"1px solid var(--green-dim)",borderRadius:4,color:"var(--green)",cursor:"pointer"}}
+                        <button
+                          className="font-display text-[11px] tracking-[2px] py-1.5 px-3.5 bg-transparent rounded-[4px] cursor-pointer border border-green-dim text-green"
                           onClick={()=>{ setSelTourney(t); setTabStep("leaderboard"); setShowPlayers(false); }}>
                           VIEW LEADERBOARD →
                         </button>
@@ -373,33 +404,34 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
       )}
 
       {activeTourneys.length === 0 && (
-        <div style={{padding:"32px 20px",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,textAlign:"center",marginBottom:28}}>
-          <div style={{fontSize:36,marginBottom:10}}>⛳</div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,marginBottom:6}}>NO ACTIVE TOURNAMENT</div>
-          <div style={{fontSize:13,color:"var(--text3)"}}>Check back when the commissioner starts one.</div>
+        <div className="p-8 bg-bg2 border border-border rounded-lg text-center mb-7">
+          <div className="text-4xl mb-2.5">⛳</div>
+          <div className="font-display text-[18px] tracking-[2px] mb-1.5">NO ACTIVE TOURNAMENT</div>
+          <div className="text-[13px] text-t3">Check back when the commissioner starts one.</div>
         </div>
       )}
 
       {pastTourneys.length > 0 && (
         <div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--text3)",marginBottom:12}}>── PAST TOURNAMENTS</div>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div className="font-display text-[11px] tracking-[3px] text-t3 mb-3">── PAST TOURNAMENTS</div>
+          <div className="flex flex-col gap-2.5">
             {pastTourneys.map(t => {
               const winner = t.snapshot?.[0];
               return (
-                <div key={t.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,cursor:"pointer"}}
+                <div key={t.id}
+                  className="bg-bg2 border border-border rounded-lg cursor-pointer"
                   onClick={()=>{ setSelTourney(t); setTabStep("leaderboard"); setShowPlayers(false); }}>
-                  <div style={{padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                  <div className="px-5 py-4 flex justify-between items-center flex-wrap gap-2.5">
                     <div>
-                      <div style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:1,color:"var(--text)"}}>{t.title}</div>
-                      <div style={{fontSize:12,color:"var(--text3)"}}>{t.date}{t.course?` · ${t.course}`:""}</div>
-                      {winner && <div style={{fontSize:12,color:"var(--gold)",marginTop:4}}>🏆 {winner.name} · Net {winner.net}</div>}
+                      <div className="font-display text-[18px] tracking-[1px] text-text">{t.title}</div>
+                      <div className="text-[12px] text-t3">{t.date}{t.course?` · ${t.course}`:""}</div>
+                      {winner && <div className="text-[12px] text-gold mt-1">🏆 {winner.name} · Net {winner.net}</div>}
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--text3)",border:"1px solid var(--border2)",borderRadius:3,padding:"2px 8px"}}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-display text-[10px] tracking-[2px] text-t3 border border-border2 rounded-[3px] px-2 py-px">
                         {t.snapshot?.length||0} PLAYERS
                       </span>
-                      <span style={{color:"var(--text3)",fontSize:18}}>›</span>
+                      <span className="text-t3 text-[18px]">›</span>
                     </div>
                   </div>
                 </div>
@@ -410,7 +442,7 @@ export default function TournamentTab({ activeHole, setActiveHole, setScreen, no
       )}
 
       {activeTourneys.length === 0 && pastTourneys.length === 0 && (
-        <div style={{textAlign:"center",padding:"20px",color:"var(--text3)",fontSize:13}}>No tournaments yet.</div>
+        <div className="text-center py-5 text-t3 text-[13px]">No tournaments yet.</div>
       )}
     </div>
   );
