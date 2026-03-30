@@ -59,14 +59,8 @@ export function TournamentProvider({ children }) {
     return () => { unsubOneOff(); unsubActive(); unsubSaved(); unsubCtp(); unsubFoursomes(); unsubBets(); };
   }, []);
 
-  const deleteFoursome = useCallback(async (id, name) => {
-    try {
-      await deleteDoc(doc(db, "tournaments", TOURNAMENT_ID, "foursomes", id));
-      notify(`Group "${name}" deleted.`);
-    } catch(e) { 
-      console.error(e); 
-      notify("Failed to delete group — check connection.", "error"); 
-    }
+  const deleteFoursome = useCallback(async (id) => {
+    await deleteDoc(doc(db, "tournaments", TOURNAMENT_ID, "foursomes", id));
   }, []);
 
   const value = useMemo(
