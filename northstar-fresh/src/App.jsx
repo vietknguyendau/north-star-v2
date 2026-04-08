@@ -134,7 +134,7 @@ function AppInner() {
   const NAV_PRIMARY = [
     ["leaderboard","🏆 LEADERBOARD"],
     ["tournament", "⛳ TOURNAMENTS"],
-    ["masters",    "🟢 MASTERS POOL"],
+    ["masters",    "🟢 MASTERS"    ],
     ["season",     "🌟 STANDINGS"  ],
     ["rules",      "📋 RULES"      ],
     ["course",     "🗺 COURSE"     ],
@@ -251,7 +251,6 @@ function AppInner() {
       {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div className={`max-w-[1100px] mx-auto px-4 pt-6 ${hideBottomNav ? "pb-6" : "pb-24 md:pb-8"}`}>
         {screen==="leaderboard"   && <LeaderboardScreen setSelectedPid={setSelectedPid} setScreen={setScreen} notify={notify} />}
-        {screen==="masters"       && <MastersPool notify={notify} />}
         {screen==="tournament"    && <TournamentTab activeHole={activeHole} setActiveHole={setActiveHole} setScreen={setScreen} notify={notify} />}
         {(screen==="my-scores"||screen==="tournament-scores") && <MyScores activeHole={activeHole} setActiveHole={setActiveHole} updateScore={updateScore} notify={notify} setScreen={setScreen} />}
         {screen==="scorecard"     && <ScorecardView selectedPid={selectedPid} setSelectedPid={setSelectedPid} updateScore={updateScore} />}
@@ -277,6 +276,7 @@ function AppInner() {
             />
           : <SidebetsLogin notify={notify} setScreen={setScreen} />
         )}
+        {screen==="masters"        && <MastersPool notify={notify} />}
         {screen==="season"        && <SeasonStandings players={players} adminUnlocked={adminUnlocked} />}
         {screen==="handicap"      && <HandicapTracker players={players} adminUnlocked={adminUnlocked} onHandicapUpdate={(pid,hcp)=>updateField(pid,"handicap",hcp)} />}
         {screen==="admin"         && <AdminViewScreen

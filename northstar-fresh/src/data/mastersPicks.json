@@ -1,0 +1,137 @@
+{
+  "tiers": [
+    {
+      "tier": 1,
+      "label": "Tier 1",
+      "picks": 1,
+      "players": [
+        { "name": "Scottie Scheffler", "wr": 1, "odds": "4/1" },
+        { "name": "Jon Rahm", "wr": 30, "odds": "9/1" },
+        { "name": "Rory McIlroy", "wr": 2, "odds": "10/1" },
+        { "name": "Bryson DeChambeau", "wr": 24, "odds": "11/1" },
+        { "name": "Ludvig Aberg", "wr": 17, "odds": "18/1" },
+        { "name": "Xander Schauffele", "wr": 10, "odds": "19/1" },
+        { "name": "Cameron Young", "wr": 3, "odds": "24/1" },
+        { "name": "Tommy Fleetwood", "wr": 4, "odds": "25/1" },
+        { "name": "Matt Fitzpatrick", "wr": 6, "odds": "26/1" },
+        { "name": "Collin Morikawa", "wr": 7, "odds": "31/1" }
+      ]
+    },
+    {
+      "tier": 2,
+      "label": "Tier 2",
+      "picks": 1,
+      "players": [
+        { "name": "Justin Rose", "wr": 9, "odds": "36/1" },
+        { "name": "Jordan Spieth", "wr": 61, "odds": "38/1" },
+        { "name": "Brooks Koepka", "wr": 169, "odds": "38/1" },
+        { "name": "Hideki Matsuyama", "wr": 14, "odds": "39/1" },
+        { "name": "Robert MacIntyre", "wr": 8, "odds": "40/1" },
+        { "name": "Russell Henley", "wr": 12, "odds": "42/1" },
+        { "name": "Chris Gotterup", "wr": 11, "odds": "43/1" },
+        { "name": "Patrick Reed", "wr": 23, "odds": "45/1" },
+        { "name": "Viktor Hovland", "wr": 22, "odds": "46/1" },
+        { "name": "Si Woo Kim", "wr": 28, "odds": "47/1" }
+      ]
+    },
+    {
+      "tier": 3,
+      "label": "Tier 3",
+      "picks": 1,
+      "players": [
+        { "name": "Min Woo Lee", "wr": 25, "odds": "54/1" },
+        { "name": "Justin Thomas", "wr": 15, "odds": "55/1" },
+        { "name": "Patrick Cantlay", "wr": 35, "odds": "57/1" },
+        { "name": "Adam Scott", "wr": 53, "odds": "62/1" },
+        { "name": "Akshay Bhatia", "wr": 21, "odds": "66/1" },
+        { "name": "Sepp Straka", "wr": 13, "odds": "67/1" },
+        { "name": "Tyrrell Hatton", "wr": 31, "odds": "69/1" },
+        { "name": "Jason Day", "wr": 41, "odds": "69/1" },
+        { "name": "Jake Knapp", "wr": 42, "odds": "69/1" },
+        { "name": "Shane Lowry", "wr": 32, "odds": "70/1" }
+      ]
+    },
+    {
+      "tier": 4,
+      "label": "Tier 4",
+      "picks": 1,
+      "players": [
+        { "name": "Sam Burns", "wr": 33, "odds": "72/1" },
+        { "name": "Corey Conners", "wr": 44, "odds": "82/1" },
+        { "name": "Nicolai Hojgaard", "wr": 36, "odds": "84/1" },
+        { "name": "J.J. Spaun", "wr": 5, "odds": "88/1" },
+        { "name": "Kurt Kitayama", "wr": 34, "odds": "88/1" },
+        { "name": "Jacob Bridgeman", "wr": 18, "odds": "94/1" },
+        { "name": "Maverick McNealy", "wr": 27, "odds": "98/1" },
+        { "name": "Matthew McCarty", "wr": 49, "odds": "100/1" },
+        { "name": "Cameron Smith", "wr": null, "odds": "100/1" },
+        { "name": "Harris English", "wr": 20, "odds": "105/1" }
+      ]
+    },
+    {
+      "tier": 5,
+      "label": "Tier 5",
+      "picks": 1,
+      "players": [
+        { "name": "Ben Griffin", "wr": 16, "odds": "110/1" },
+        { "name": "Daniel Berger", "wr": 38, "odds": "110/1" },
+        { "name": "Gary Woodland", "wr": 52, "odds": "110/1" },
+        { "name": "Max Homa", "wr": 163, "odds": "115/1" },
+        { "name": "Sungjae Im", "wr": 71, "odds": "120/1" },
+        { "name": "Rasmus Hojgaard", "wr": 57, "odds": "130/1" },
+        { "name": "Keegan Bradley", "wr": 26, "odds": "140/1" },
+        { "name": "Marco Penge", "wr": 37, "odds": "160/1" },
+        { "name": "Harry Hall", "wr": 62, "odds": "160/1" },
+        { "name": "Alexander Noren", "wr": 19, "odds": "165/1" }
+      ]
+    },
+    {
+      "tier": 6,
+      "label": "Tier 6",
+      "picks": 1,
+      "players": [
+        { "name": "Ryan Gerard", "wr": 29, "odds": "170/1" },
+        { "name": "Aaron Rai", "wr": 39, "odds": "195/1" },
+        { "name": "Nick Taylor", "wr": 67, "odds": "195/1" },
+        { "name": "Brian Harman", "wr": 50, "odds": "200/1" },
+        { "name": "Sam Stevens", "wr": 45, "odds": "210/1" },
+        { "name": "Ryan Fox", "wr": 51, "odds": "225/1" },
+        { "name": "Wyndham Clark", "wr": 78, "odds": "225/1" },
+        { "name": "Sergio Garcia", "wr": null, "odds": "225/1" },
+        { "name": "Max Greyserman", "wr": 59, "odds": "230/1" },
+        { "name": "Dustin Johnson", "wr": null, "odds": "240/1" },
+        { "name": "Casey Jarvis", "wr": 70, "odds": "250/1" },
+        { "name": "Carlos Ortiz", "wr": 161, "odds": "260/1" },
+        { "name": "Hao-Tong Li", "wr": 84, "odds": "280/1" },
+        { "name": "Tom McKibbin", "wr": 105, "odds": "280/1" },
+        { "name": "Nicolas Echavarria", "wr": 40, "odds": "310/1" },
+        { "name": "Kristoffer Reitan", "wr": 46, "odds": "310/1" },
+        { "name": "Rasmus Neergaard-Petersen", "wr": 69, "odds": "325/1" },
+        { "name": "John Keefer", "wr": 64, "odds": "340/1" },
+        { "name": "Michael Kim", "wr": 43, "odds": "350/1" },
+        { "name": "Andrew Novak", "wr": 48, "odds": "400/1" },
+        { "name": "Aldrich Potgieter", "wr": 77, "odds": "410/1" },
+        { "name": "Michael Brennan", "wr": 47, "odds": "430/1" },
+        { "name": "Sami Valimaki", "wr": 56, "odds": "525/1" },
+        { "name": "Davis Riley", "wr": 120, "odds": "600/1" },
+        { "name": "Bubba Watson", "wr": null, "odds": "600/1" },
+        { "name": "Charl Schwartzel", "wr": null, "odds": "600/1" },
+        { "name": "Zach Johnson", "wr": null, "odds": "600/1" },
+        { "name": "Brian Campbell", "wr": 112, "odds": "2500/1" },
+        { "name": "Danny Willett", "wr": null, "odds": "2500/1" },
+        { "name": "Ethan Fang", "wr": null, "odds": "2500/1" },
+        { "name": "Fifa Laopakdee", "wr": null, "odds": "4000/1" },
+        { "name": "Angel Cabrera", "wr": null, "odds": "4500/1" },
+        { "name": "Naoyuki Kataoka", "wr": null, "odds": "4500/1" },
+        { "name": "Vijay Singh", "wr": null, "odds": "4500/1" },
+        { "name": "Jackson Herrington", "wr": null, "odds": "4500/1" },
+        { "name": "Mason Howell", "wr": null, "odds": "4500/1" },
+        { "name": "Mateo Pulcini", "wr": null, "odds": "4500/1" },
+        { "name": "Fred Couples", "wr": null, "odds": "5000/1" },
+        { "name": "Jose Maria Olazabal", "wr": null, "odds": "5000/1" },
+        { "name": "Mike Weir", "wr": null, "odds": "5000/1" },
+        { "name": "Brandon Holtz", "wr": null, "odds": "5000/1" }
+      ]
+    }
+  ]
+}
