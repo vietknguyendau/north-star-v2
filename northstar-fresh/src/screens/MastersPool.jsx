@@ -1,47 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { collection, doc, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
+import { useAuth } from "../contexts/AuthContext";
+import { usePlayers } from "../contexts/PlayersContext";
+import PinKeypad from "../components/PinKeypad";
+import { hashPin } from "../lib/scoring";
+import mastersData from "../data/mastersPicks.json";
 
 const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN;
 const MAX_ENTRIES = 40;
 
-const TIERS = [
-  {
-    tier: 1,
-    label: "Tier 1 — The Favorites",
-    golfers: ["Scottie Scheffler", "Jon Rahm", "Bryson DeChambeau", "Rory McIlroy"],
-  },
-  {
-    tier: 2,
-    label: "Tier 2 — Contenders",
-    golfers: ["Xander Schauffele", "Collin Morikawa", "Viktor Hovland", "Ludvig Åberg"],
-  },
-  {
-    tier: 3,
-    label: "Tier 3 — Dark Horses",
-    golfers: ["Tommy Fleetwood", "Patrick Cantlay", "Shane Lowry", "Cameron Smith"],
-  },
-  {
-    tier: 4,
-    label: "Tier 4 — Former Champs",
-    golfers: ["Jordan Spieth", "Hideki Matsuyama", "Justin Thomas", "Brooks Koepka"],
-  },
-  {
-    tier: 5,
-    label: "Tier 5 — Longshots",
-    golfers: ["Tony Finau", "Jason Day", "Min Woo Lee", "Corey Conners"],
-  },
-  {
-    tier: 6,
-    label: "Tier 6 — The Field",
-    golfers: [
-      "Wyndham Clark", "Tom Kim", "Sahith Theegala", "Harris English",
-      "Adam Scott", "Sepp Straka", "Russell Henley", "Si Woo Kim",
-    ],
-  },
-];
+const ALL_GOLFER_NAMES = mastersData.tiers.flatMap((t) => t.players.map((p) => p.name));
 
-const ALL_GOLFERS = TIERS.flatMap((t) => t.golfers);
+// ── Scoring helpers ───────────────────────────────────────────────────────────
 
 function golferTotal(golfer) {
   if (!golfer) return null;
@@ -62,28 +33,21 @@ function golferTotal(golfer) {
 }
 
 function entryBreakdown(entry, scores) {
-  const details = TIERS.map((t) => {
+  const details = mastersData.tiers.map((t) => {
     const name = entry[`tier${t.tier}`];
     const g = scores[name];
     const total = golferTotal(g);
-    return {
-      tier: t.tier,
-      name,
-      total,
-      missedCut: g?.missedCut ?? false,
-    };
+    return { tier: t.tier, name, total, missedCut: g?.missedCut ?? false };
   });
 
-  // Sort by total ascending (null/no-score treated as 0 for sorting)
   const sorted = [...details].sort((a, b) => (a.total ?? 0) - (b.total ?? 0));
   const counting = sorted.slice(0, 4);
-  const dropped = sorted.slice(4);
   const teamTotal = counting.reduce((sum, d) => sum + (d.total ?? 0), 0);
 
-  return { sorted, counting, dropped, teamTotal };
+  return { sorted, counting, teamTotal };
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── LEADERBOARD TAB ───────────────────────────────────────────────────────────
 
 function LeaderboardTab({ entries, scores, loading }) {
   const [expanded, setExpanded] = useState(null);
@@ -122,7 +86,10 @@ function LeaderboardTab({ entries, scores, loading }) {
       {ranked.map((entry, idx) => {
         const isExp = expanded === entry.id;
         const rankColor =
-          idx === 0 ? "text-gold" : idx === 1 ? "text-t2" : idx === 2 ? "text-amber" : "text-t3";
+          idx === 0 ? "text-gold"
+          : idx === 1 ? "text-t2"
+          : idx === 2 ? "text-amber"
+          : "text-t3";
 
         return (
           <div key={entry.id} className="card mb-2 overflow-hidden">
@@ -158,30 +125,16 @@ function LeaderboardTab({ entries, scores, loading }) {
                       key={d.name}
                       className={`flex items-center gap-3 py-1.5 ${i === 3 ? "border-b border-border mb-1" : ""}`}
                     >
-                      <div
-                        className={`text-[10px] font-display tracking-wider w-5 shrink-0 ${
-                          isCounting ? "text-green" : "text-t3"
-                        }`}
-                      >
+                      <div className={`text-[10px] font-display tracking-wider w-5 shrink-0 ${isCounting ? "text-green" : "text-t3"}`}>
                         T{d.tier}
                       </div>
-                      <div
-                        className={`flex-1 text-[13px] ${
-                          isCounting ? "text-text" : "text-t3 line-through"
-                        }`}
-                      >
+                      <div className={`flex-1 text-[13px] ${isCounting ? "text-text" : "text-t3 line-through"}`}>
                         {d.name}
                         {d.missedCut && (
-                          <span className="text-red ml-1.5 text-[10px] no-underline not-italic">
-                            MC
-                          </span>
+                          <span className="text-red ml-1.5 text-[10px]">MC</span>
                         )}
                       </div>
-                      <div
-                        className={`font-display text-[14px] shrink-0 ${
-                          isCounting ? "text-gold" : "text-t3"
-                        }`}
-                      >
+                      <div className={`font-display text-[14px] shrink-0 ${isCounting ? "text-gold" : "text-t3"}`}>
                         {d.total == null ? "—" : d.total}
                       </div>
                     </div>
@@ -197,7 +150,6 @@ function LeaderboardTab({ entries, scores, loading }) {
         );
       })}
 
-      {/* Payout */}
       <div className="card mt-6 p-5">
         <div className="section-label mb-4">PAYOUT BREAKDOWN</div>
         <div className="flex justify-around text-center">
@@ -222,42 +174,131 @@ function LeaderboardTab({ entries, scores, loading }) {
   );
 }
 
-function EnterPicksTab({ entries, notify, activePlayer, players }) {
-  const [name, setName] = useState("");
-  const [picks, setPicks] = useState({ tier1: "", tier2: "", tier3: "", tier4: "", tier5: "", tier6: "" });
+// ── LOGIN GATE (mirrors MyScoresLogin pattern) ────────────────────────────────
+
+function LoginGate({ onSuccess }) {
+  const { players } = usePlayers();
+  const { setActivePlayer } = useAuth();
+  const [pending, setPending] = useState(null);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [attempts, setAttempts] = useState({});
+
+  const handleSubmit = async () => {
+    if (!pending) return;
+    const tries = attempts[pending.id] || 0;
+    if (tries >= 5) {
+      setPinError("Too many attempts. Ask the commissioner to reset your PIN.");
+      return;
+    }
+    if (pin === ADMIN_PIN) {
+      setActivePlayer(pending.id);
+      onSuccess(pending);
+      return;
+    }
+    const hash = await hashPin(pin);
+    if (hash === pending.pinHash) {
+      setActivePlayer(pending.id);
+      setAttempts((a) => ({ ...a, [pending.id]: 0 }));
+      onSuccess(pending);
+    } else {
+      const next = tries + 1;
+      setAttempts((a) => ({ ...a, [pending.id]: next }));
+      setPinError(`Incorrect PIN. ${5 - next} attempt${5 - next === 1 ? "" : "s"} remaining.`);
+    }
+  };
+
+  if (!pending) {
+    return (
+      <div className="fade-up max-w-lg mx-auto">
+        <div className="text-center mb-6">
+          <div className="font-display text-[13px] tracking-[4px] text-green mb-1.5">MASTERS POOL</div>
+          <h2 className="font-display text-[28px] tracking-[2px]">WHO ARE YOU?</h2>
+          <div className="text-[12px] text-t3 mt-1">Log in to enter your picks</div>
+        </div>
+        <div className="card overflow-hidden">
+          {players.length === 0 && (
+            <div className="p-8 text-center text-t3 text-[14px]">
+              No players registered yet.
+            </div>
+          )}
+          {players.map((p) => (
+            <button
+              key={p.id}
+              className="player-row w-full px-5 py-4 flex justify-between items-center min-h-[64px] bg-transparent border-none cursor-pointer text-left"
+              onClick={() => { setPending(p); setPin(""); setPinError(""); }}
+            >
+              <div className="text-[17px] font-semibold text-text">{p.name}</div>
+              <span className="font-display text-[12px] tracking-[1px] text-gold">SELECT →</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fade-up text-center max-w-xs mx-auto">
+      <div className="font-display text-[13px] tracking-[4px] text-green mb-2">MASTERS POOL</div>
+      <h2 className="font-display text-[28px] tracking-[2px] mb-1">{pending.name}</h2>
+      <div className="text-[12px] text-t3 mb-7">Enter your 4-digit PIN to continue</div>
+      <div className="card p-7">
+        <PinKeypad
+          pin={pin}
+          onChange={(v) => { setPin(v); setPinError(""); }}
+          error={pinError}
+          onSubmit={handleSubmit}
+          submitLabel="ENTER →"
+        />
+        <button
+          className="btn-ghost w-full text-[12px] mt-2"
+          onClick={() => { setPending(null); setPin(""); setPinError(""); }}
+        >
+          ← BACK
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── ENTER PICKS TAB ───────────────────────────────────────────────────────────
+
+function EnterPicksTab({ entries, notify }) {
+  const { activePlayer, setActivePlayer } = useAuth();
+  const { players } = usePlayers();
+
+  // picks keyed by tier number: { 1: "Player Name" | null, ... }
+  const emptyPicks = () =>
+    Object.fromEntries(mastersData.tiers.map((t) => [t.tier, null]));
+
+  const [picks, setPicks] = useState(emptyPicks);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Pre-fill name if logged in
-  useEffect(() => {
-    if (activePlayer && players) {
-      const p = players.find((pl) => pl.id === activePlayer);
-      if (p) setName(p.name);
-    }
-  }, [activePlayer, players]);
-
+  const player = players.find((p) => p.id === activePlayer) ?? null;
   const isFull = entries.length >= MAX_ENTRIES;
-  const chosen = Object.values(picks).filter(Boolean);
+  const allPicked = mastersData.tiers.every((t) => picks[t.tier] != null);
+
+  const togglePick = (tierNum, playerName) => {
+    setPicks((prev) => ({
+      ...prev,
+      [tierNum]: prev[tierNum] === playerName ? null : playerName,
+    }));
+  };
 
   const submit = async () => {
-    if (!name.trim()) { notify("Please enter your name", "error"); return; }
-    for (const t of TIERS) {
-      if (!picks[`tier${t.tier}`]) {
-        notify(`Pick a golfer for ${t.label}`, "error");
-        return;
-      }
-    }
-    if (new Set(chosen).size !== chosen.length) {
-      notify("You can't pick the same golfer twice", "error");
-      return;
-    }
+    if (!player) return;
+    if (!allPicked) { notify("Pick one golfer from every tier", "error"); return; }
     setSubmitting(true);
     try {
       const id = `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const tierFields = Object.fromEntries(
+        mastersData.tiers.map((t) => [`tier${t.tier}`, picks[t.tier]])
+      );
       await setDoc(doc(db, "masters_entries", id), {
         id,
-        name: name.trim(),
-        ...picks,
+        name: player.name,
+        ...tierFields,
         submittedAt: Date.now(),
       });
       notify("Entry submitted! Good luck! ⛳");
@@ -269,13 +310,21 @@ function EnterPicksTab({ entries, notify, activePlayer, players }) {
     setSubmitting(false);
   };
 
+  // Gate: must be logged in
+  if (!activePlayer) {
+    return <LoginGate onSuccess={() => {}} />;
+  }
+
   if (submitted) {
     return (
-      <div className="max-w-sm mx-auto text-center py-10">
+      <div className="max-w-sm mx-auto text-center py-10 fade-up">
         <div className="text-5xl mb-4">🏆</div>
         <div className="font-display text-[28px] tracking-wide mb-2">YOU'RE IN!</div>
-        <div className="text-t2 text-sm mb-6">Good luck at Augusta, {name.trim()}.</div>
-        <button className="btn-ghost btn-sm" onClick={() => setSubmitted(false)}>
+        <div className="text-t2 text-sm mb-6">Good luck at Augusta, {player?.name ?? ""}.</div>
+        <button
+          className="btn-ghost btn-sm"
+          onClick={() => { setSubmitted(false); setPicks(emptyPicks()); }}
+        >
           Submit Another Entry
         </button>
       </div>
@@ -293,71 +342,95 @@ function EnterPicksTab({ entries, notify, activePlayer, players }) {
   }
 
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="card p-5 mb-4">
-        <div className="section-label mb-4">YOUR ENTRY</div>
-
-        <div className="mb-5">
-          <label className="text-[11px] text-t2 font-display tracking-wider block mb-1.5">
-            YOUR NAME
-          </label>
-          <input
-            className="w-full"
-            placeholder="First Last"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+    <div className="max-w-lg mx-auto fade-up">
+      {/* Who's entering */}
+      <div className="flex items-center justify-between mb-4 px-1">
+        <div>
+          <div className="text-[11px] text-t3 font-display tracking-wider">ENTERING AS</div>
+          <div className="font-display text-[18px] tracking-wide text-gold">{player?.name}</div>
         </div>
+        <div className="text-[11px] text-t3">{entries.length} / {MAX_ENTRIES} entries</div>
+      </div>
 
-        {TIERS.map((t) => {
-          const key = `tier${t.tier}`;
-          return (
-            <div key={t.tier} className="mb-4">
-              <label className="text-[11px] text-t2 font-display tracking-wider block mb-1.5">
-                {t.label}
-              </label>
-              <select
-                className="w-full bg-bg3 border border-border rounded px-3 py-2.5 text-sm text-text"
-                style={{ appearance: "none" }}
-                value={picks[key]}
-                onChange={(e) => setPicks((p) => ({ ...p, [key]: e.target.value }))}
-              >
-                <option value="">— Pick one —</option>
-                {t.golfers.map((g) => {
-                  const alreadyPicked = chosen.includes(g) && picks[key] !== g;
-                  return (
-                    <option key={g} value={g} disabled={alreadyPicked}>
-                      {g}
-                      {alreadyPicked ? " (already picked)" : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          );
-        })}
+      {/* Tier sections */}
+      {mastersData.tiers.map((tier) => (
+        <div key={tier.tier} className="mb-4">
+          <div className="section-label mb-2">
+            {tier.label} — PICK {tier.picks}
+          </div>
+          <div className="card overflow-hidden">
+            {tier.players.map((player) => {
+              const isSelected = picks[tier.tier] === player.name;
+              return (
+                <button
+                  key={player.name}
+                  className={[
+                    "w-full flex items-center gap-3 px-4 min-h-[44px] text-left border-none cursor-pointer transition-colors active:opacity-70",
+                    isSelected
+                      ? "bg-bg3 border-l-2 border-l-gold"
+                      : "bg-transparent border-l-2 border-l-transparent",
+                  ].join(" ")}
+                  onClick={() => togglePick(tier.tier, player.name)}
+                >
+                  {/* Checkbox */}
+                  <div
+                    className={[
+                      "w-4 h-4 rounded shrink-0 flex items-center justify-center border transition-colors",
+                      isSelected ? "bg-gold border-gold" : "border-border2 bg-bg4",
+                    ].join(" ")}
+                  >
+                    {isSelected && (
+                      <span style={{ fontSize: 9, color: "var(--bg)", fontWeight: 700, lineHeight: 1 }}>
+                        ✓
+                      </span>
+                    )}
+                  </div>
 
-        <div className="text-[11px] text-t3 text-center mb-3">
-          {entries.length} / {MAX_ENTRIES} entries submitted
+                  {/* Name */}
+                  <div className={`flex-1 text-[14px] ${isSelected ? "text-text" : "text-t2"}`}>
+                    {player.name}
+                  </div>
+
+                  {/* WR */}
+                  <div className="text-[11px] text-t3 w-8 text-right shrink-0">
+                    {player.wr != null ? `#${player.wr}` : "—"}
+                  </div>
+
+                  {/* Odds */}
+                  <div className="text-[11px] text-t2 w-14 text-right shrink-0 font-mono">
+                    {player.odds}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
+      ))}
 
+      {/* Submit */}
+      <div className="sticky bottom-20 md:bottom-4 pt-2 pb-1">
         <button
           className="btn-gold w-full"
           onClick={submit}
-          disabled={submitting}
+          disabled={submitting || !allPicked}
+          style={{ opacity: allPicked ? 1 : 0.5 }}
         >
-          {submitting ? "SUBMITTING…" : "SUBMIT PICKS — $10 ENTRY"}
+          {submitting
+            ? "SUBMITTING…"
+            : allPicked
+            ? "SUBMIT PICKS — $10 ENTRY"
+            : `${mastersData.tiers.filter((t) => !picks[t.tier]).length} TIER${mastersData.tiers.filter((t) => !picks[t.tier]).length === 1 ? "" : "S"} REMAINING`}
         </button>
       </div>
 
-      {/* Rules card */}
-      <div className="card p-4">
+      {/* Rules */}
+      <div className="card p-4 mt-3 mb-6">
         <div className="section-label mb-3">POOL RULES</div>
         <div className="space-y-1.5 text-[12px] text-t2">
           <div>Pick 1 golfer from each of 6 tiers</div>
           <div>Best 4 of 6 scores count toward your team total</div>
           <div>Missed cut = +80 per remaining round</div>
-          <div>Lowest team total wins — lowest score wins!</div>
+          <div>Lowest team total wins</div>
           <div>$10 entry · up to {MAX_ENTRIES} people</div>
           <div className="pt-1 text-t3">Payout: 60% / 30% / 10%</div>
         </div>
@@ -365,6 +438,8 @@ function EnterPicksTab({ entries, notify, activePlayer, players }) {
     </div>
   );
 }
+
+// ── ADMIN TAB ─────────────────────────────────────────────────────────────────
 
 function AdminTab({ entries, scores, notify }) {
   const [unlocked, setUnlocked] = useState(false);
@@ -376,7 +451,7 @@ function AdminTab({ entries, scores, notify }) {
   useEffect(() => {
     if (unlocked) {
       const init = {};
-      ALL_GOLFERS.forEach((name) => {
+      ALL_GOLFER_NAMES.forEach((name) => {
         const g = scores[name] || {};
         init[name] = {
           r1: g.r1 ?? "",
@@ -403,7 +478,7 @@ function AdminTab({ entries, scores, notify }) {
     setSaving(true);
     try {
       const clean = {};
-      ALL_GOLFERS.forEach((name) => {
+      ALL_GOLFER_NAMES.forEach((name) => {
         const g = localScores[name] || {};
         clean[name] = {
           r1: g.r1 !== "" && g.r1 != null ? parseInt(g.r1) : null,
@@ -458,22 +533,21 @@ function AdminTab({ entries, scores, notify }) {
 
   return (
     <div className="fade-up">
-      {/* Score entry */}
-      <div className="section-label mb-4">ENTER GOLFER SCORES</div>
+      <div className="section-label mb-2">ENTER GOLFER SCORES</div>
       <div className="text-[11px] text-t3 mb-4">
         Enter raw round scores (e.g. 68, 71). Check MC for missed cut — +80 added per remaining round.
       </div>
 
-      {TIERS.map((t) => (
+      {mastersData.tiers.map((t) => (
         <div key={t.tier} className="card mb-4 p-4">
           <div className="text-[11px] text-green font-display tracking-widest mb-3">
             {t.label.toUpperCase()}
           </div>
-          {t.golfers.map((name) => {
+          {t.players.map(({ name }) => {
             const g = localScores[name] || { r1: "", r2: "", r3: "", r4: "", missedCut: false };
             return (
               <div key={name} className="flex items-center gap-2 mb-3 flex-wrap">
-                <div className="text-[13px] min-w-[140px] shrink-0">{name}</div>
+                <div className="text-[13px] min-w-[160px] shrink-0">{name}</div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {["r1", "r2", "r3", "r4"].map((r) => (
                     <div key={r} className="flex flex-col items-center gap-0.5">
@@ -509,7 +583,6 @@ function AdminTab({ entries, scores, notify }) {
         {saving ? "SAVING…" : "SAVE ALL SCORES"}
       </button>
 
-      {/* Entry management */}
       <div className="section-label mb-3">MANAGE ENTRIES ({entries.length})</div>
       {entries.length === 0 && (
         <div className="text-t3 text-sm text-center py-6">No entries yet.</div>
@@ -536,9 +609,9 @@ function AdminTab({ entries, scores, notify }) {
   );
 }
 
-// ── Main screen ───────────────────────────────────────────────────────────────
+// ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 
-export default function MastersPool({ notify, activePlayer, players }) {
+export default function MastersPool({ notify }) {
   const [tab, setTab] = useState("leaderboard");
   const [entries, setEntries] = useState([]);
   const [scores, setScores] = useState({});
@@ -570,7 +643,6 @@ export default function MastersPool({ notify, activePlayer, players }) {
 
   return (
     <div className="fade-up">
-      {/* Header */}
       <div className="text-center mb-6">
         <div className="font-display text-[11px] tracking-[4px] text-green mb-1">APRIL 2026</div>
         <h1 className="font-display text-[32px] md:text-[42px] tracking-[2px] leading-none">
@@ -581,7 +653,6 @@ export default function MastersPool({ notify, activePlayer, players }) {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-border mb-5">
         {tabBtn("leaderboard", "🏆 LEADERBOARD")}
         {tabBtn("picks", "⛳ ENTER PICKS")}
@@ -592,12 +663,7 @@ export default function MastersPool({ notify, activePlayer, players }) {
         <LeaderboardTab entries={entries} scores={scores} loading={loading} />
       )}
       {tab === "picks" && (
-        <EnterPicksTab
-          entries={entries}
-          notify={notify}
-          activePlayer={activePlayer}
-          players={players}
-        />
+        <EnterPicksTab entries={entries} notify={notify} />
       )}
       {tab === "admin" && (
         <AdminTab entries={entries} scores={scores} notify={notify} />

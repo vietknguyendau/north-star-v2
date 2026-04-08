@@ -275,7 +275,7 @@ function AppInner() {
             />
           : <SidebetsLogin notify={notify} setScreen={setScreen} />
         )}
-        {screen==="masters"        && <MastersPool notify={notify} activePlayer={activePlayer} players={players} />}
+        {screen==="masters"        && <MastersPool notify={notify} />}
         {screen==="season"        && <SeasonStandings players={players} adminUnlocked={adminUnlocked} />}
         {screen==="handicap"      && <HandicapTracker players={players} adminUnlocked={adminUnlocked} onHandicapUpdate={(pid,hcp)=>updateField(pid,"handicap",hcp)} />}
         {screen==="admin"         && <AdminViewScreen
