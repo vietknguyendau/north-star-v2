@@ -9,10 +9,15 @@ import mastersData from "../data/mastersPicks.json";
 
 const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN;
 const MAX_ENTRIES = 40;
+const LOCK_TIME = new Date("2026-04-09T02:00:00").getTime();
 
 const ALL_GOLFER_NAMES = mastersData.tiers.flatMap((t) => t.players.map((p) => p.name));
 
-// ── Scoring helpers ───────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function isLocked() {
+  return Date.now() >= LOCK_TIME;
+}
 
 function golferTotal(golfer) {
   if (!golfer) return null;
@@ -47,14 +52,28 @@ function entryBreakdown(entry, scores) {
   return { sorted, counting, teamTotal };
 }
 
+function emptyPicks() {
+  return Object.fromEntries(mastersData.tiers.map((t) => [t.tier, null]));
+}
+
+function picksFromEntry(entry) {
+  return Object.fromEntries(mastersData.tiers.map((t) => [t.tier, entry[`tier${t.tier}`] ?? null]));
+}
+
 // ── LEADERBOARD TAB ───────────────────────────────────────────────────────────
 
-function LeaderboardTab({ entries, scores, loading }) {
+function LeaderboardTab({ entries, scores, loading, winningScore }) {
   const [expanded, setExpanded] = useState(null);
 
   const ranked = [...entries]
     .map((e) => ({ ...e, ...entryBreakdown(e, scores) }))
-    .sort((a, b) => a.teamTotal - b.teamTotal);
+    .sort((a, b) => {
+      if (a.teamTotal !== b.teamTotal) return a.teamTotal - b.teamTotal;
+      if (winningScore == null) return 0;
+      const diffA = Math.abs((a.tiebreaker ?? 0) - winningScore);
+      const diffB = Math.abs((b.tiebreaker ?? 0) - winningScore);
+      return diffA - diffB;
+    });
 
   const pot = entries.length * 10;
   const payouts = [
@@ -83,6 +102,16 @@ function LeaderboardTab({ entries, scores, loading }) {
 
   return (
     <div>
+      {/* Winning score banner */}
+      {winningScore != null && (
+        <div className="card mb-4 p-3 flex items-center justify-between">
+          <div className="text-[11px] text-t3 font-display tracking-wider">WINNING SCORE</div>
+          <div className="font-display text-xl text-gold">
+            {winningScore > 0 ? `+${winningScore}` : winningScore}
+          </div>
+        </div>
+      )}
+
       {ranked.map((entry, idx) => {
         const isExp = expanded === entry.id;
         const rankColor =
@@ -90,6 +119,11 @@ function LeaderboardTab({ entries, scores, loading }) {
           : idx === 1 ? "text-t2"
           : idx === 2 ? "text-amber"
           : "text-t3";
+
+        const tbDiff =
+          winningScore != null && entry.tiebreaker != null
+            ? Math.abs(entry.tiebreaker - winningScore)
+            : null;
 
         return (
           <div key={entry.id} className="card mb-2 overflow-hidden">
@@ -130,9 +164,7 @@ function LeaderboardTab({ entries, scores, loading }) {
                       </div>
                       <div className={`flex-1 text-[13px] ${isCounting ? "text-text" : "text-t3 line-through"}`}>
                         {d.name}
-                        {d.missedCut && (
-                          <span className="text-red ml-1.5 text-[10px]">MC</span>
-                        )}
+                        {d.missedCut && <span className="text-red ml-1.5 text-[10px]">MC</span>}
                       </div>
                       <div className={`font-display text-[14px] shrink-0 ${isCounting ? "text-gold" : "text-t3"}`}>
                         {d.total == null ? "—" : d.total}
@@ -140,9 +172,24 @@ function LeaderboardTab({ entries, scores, loading }) {
                     </div>
                   );
                 })}
-                <div className="flex justify-between items-center mt-2.5 pt-1">
+                <div className="flex justify-between items-center mt-2.5 pt-1 border-t border-border">
                   <div className="text-[10px] text-t3">Best 4 of 6 · Lowest Wins</div>
                   <div className="font-display text-gold">{entry.teamTotal}</div>
+                </div>
+
+                {/* Tiebreaker */}
+                <div className="flex justify-between items-center mt-2 pt-1">
+                  <div className="text-[10px] text-t3">
+                    TIEBREAKER GUESS
+                    {tbDiff != null && (
+                      <span className="ml-1 text-t3">· off by {tbDiff}</span>
+                    )}
+                  </div>
+                  <div className="font-display text-[13px] text-t2">
+                    {entry.tiebreaker != null
+                      ? entry.tiebreaker > 0 ? `+${entry.tiebreaker}` : entry.tiebreaker
+                      : "—"}
+                  </div>
                 </div>
               </div>
             )}
@@ -174,7 +221,7 @@ function LeaderboardTab({ entries, scores, loading }) {
   );
 }
 
-// ── LOGIN GATE (mirrors MyScoresLogin pattern) ────────────────────────────────
+// ── LOGIN GATE ────────────────────────────────────────────────────────────────
 
 function LoginGate({ onSuccess }) {
   const { players } = usePlayers();
@@ -218,9 +265,7 @@ function LoginGate({ onSuccess }) {
         </div>
         <div className="card overflow-hidden">
           {players.length === 0 && (
-            <div className="p-8 text-center text-t3 text-[14px]">
-              No players registered yet.
-            </div>
+            <div className="p-8 text-center text-t3 text-[14px]">No players registered yet.</div>
           )}
           {players.map((p) => (
             <button
@@ -261,23 +306,76 @@ function LoginGate({ onSuccess }) {
   );
 }
 
+// ── READ-ONLY ENTRY VIEW ──────────────────────────────────────────────────────
+
+function LockedEntryView({ entry }) {
+  return (
+    <div className="max-w-lg mx-auto fade-up">
+      <div className="card p-4 mb-3" style={{ borderColor: "var(--gold-dim)" }}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-gold text-sm">🔒</span>
+          <div className="font-display text-[11px] tracking-wider text-gold">PICKS LOCKED</div>
+        </div>
+        <div className="text-[12px] text-t3">
+          Entries closed April 9 at 2:00 AM. Good luck, {entry.name}!
+        </div>
+      </div>
+
+      {mastersData.tiers.map((t) => (
+        <div key={t.tier} className="mb-3">
+          <div className="section-label mb-1.5">{t.label}</div>
+          <div className="card px-4 py-3 flex items-center gap-3">
+            <div
+              className="w-4 h-4 rounded shrink-0 flex items-center justify-center bg-gold border-gold border"
+            >
+              <span style={{ fontSize: 9, color: "var(--bg)", fontWeight: 700, lineHeight: 1 }}>✓</span>
+            </div>
+            <div className="flex-1 text-[14px]">{entry[`tier${t.tier}`]}</div>
+          </div>
+        </div>
+      ))}
+
+      <div className="card px-4 py-3 mt-3 flex justify-between items-center">
+        <div className="text-[11px] text-t3 font-display tracking-wider">TIEBREAKER GUESS</div>
+        <div className="font-display text-[15px] text-t2">
+          {entry.tiebreaker != null
+            ? entry.tiebreaker > 0 ? `+${entry.tiebreaker}` : entry.tiebreaker
+            : "—"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── ENTER PICKS TAB ───────────────────────────────────────────────────────────
 
 function EnterPicksTab({ entries, notify }) {
-  const { activePlayer, setActivePlayer } = useAuth();
+  const { activePlayer } = useAuth();
   const { players } = usePlayers();
 
-  // picks keyed by tier number: { 1: "Player Name" | null, ... }
-  const emptyPicks = () =>
-    Object.fromEntries(mastersData.tiers.map((t) => [t.tier, null]));
-
   const [picks, setPicks] = useState(emptyPicks);
+  const [tiebreaker, setTiebreaker] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const locked = isLocked();
   const player = players.find((p) => p.id === activePlayer) ?? null;
-  const isFull = entries.length >= MAX_ENTRIES;
+  const existingEntry = entries.find((e) => e.playerId === activePlayer) ?? null;
+
+  // Pre-load existing entry when player logs in
+  useEffect(() => {
+    if (existingEntry) {
+      setPicks(picksFromEntry(existingEntry));
+      setTiebreaker(existingEntry.tiebreaker ?? "");
+    } else {
+      setPicks(emptyPicks());
+      setTiebreaker("");
+    }
+  }, [activePlayer, existingEntry?.id]);
+
+  const isFull = !existingEntry && entries.length >= MAX_ENTRIES;
   const allPicked = mastersData.tiers.every((t) => picks[t.tier] != null);
+  const isEditing = !!existingEntry;
 
   const togglePick = (tierNum, playerName) => {
     setPicks((prev) => ({
@@ -289,19 +387,26 @@ function EnterPicksTab({ entries, notify }) {
   const submit = async () => {
     if (!player) return;
     if (!allPicked) { notify("Pick one golfer from every tier", "error"); return; }
+    if (tiebreaker === "" || tiebreaker == null) {
+      notify("Enter your tiebreaker guess", "error");
+      return;
+    }
     setSubmitting(true);
     try {
-      const id = `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      // Reuse existing id when editing, generate new one otherwise
+      const id = existingEntry ? existingEntry.id : `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const tierFields = Object.fromEntries(
         mastersData.tiers.map((t) => [`tier${t.tier}`, picks[t.tier]])
       );
       await setDoc(doc(db, "masters_entries", id), {
         id,
+        playerId: activePlayer,
         name: player.name,
         ...tierFields,
+        tiebreaker: parseInt(tiebreaker),
         submittedAt: Date.now(),
       });
-      notify("Entry submitted! Good luck! ⛳");
+      notify(isEditing ? "Picks updated! ⛳" : "Entry submitted! Good luck! ⛳");
       setSubmitted(true);
     } catch (e) {
       console.error(e);
@@ -315,22 +420,23 @@ function EnterPicksTab({ entries, notify }) {
     return <LoginGate onSuccess={() => {}} />;
   }
 
-  if (submitted) {
+  // After deadline with existing entry → read-only
+  if (locked && existingEntry) {
+    return <LockedEntryView entry={existingEntry} />;
+  }
+
+  // After deadline, no entry → closed
+  if (locked && !existingEntry) {
     return (
-      <div className="max-w-sm mx-auto text-center py-10 fade-up">
-        <div className="text-5xl mb-4">🏆</div>
-        <div className="font-display text-[28px] tracking-wide mb-2">YOU'RE IN!</div>
-        <div className="text-t2 text-sm mb-6">Good luck at Augusta, {player?.name ?? ""}.</div>
-        <button
-          className="btn-ghost btn-sm"
-          onClick={() => { setSubmitted(false); setPicks(emptyPicks()); }}
-        >
-          Submit Another Entry
-        </button>
+      <div className="max-w-sm mx-auto text-center py-10">
+        <div className="text-4xl mb-3">🔒</div>
+        <div className="font-display text-xl tracking-wider text-red mb-2">ENTRIES CLOSED</div>
+        <div className="text-t3 text-sm">The pool locked on April 9 at 2:00 AM.</div>
       </div>
     );
   }
 
+  // Pool full (and no existing entry to edit)
   if (isFull) {
     return (
       <div className="max-w-sm mx-auto text-center py-10">
@@ -341,38 +447,66 @@ function EnterPicksTab({ entries, notify }) {
     );
   }
 
+  if (submitted) {
+    return (
+      <div className="max-w-sm mx-auto text-center py-10 fade-up">
+        <div className="text-5xl mb-4">🏆</div>
+        <div className="font-display text-[28px] tracking-wide mb-2">
+          {isEditing ? "PICKS UPDATED!" : "YOU'RE IN!"}
+        </div>
+        <div className="text-t2 text-sm mb-6">Good luck at Augusta, {player?.name ?? ""}.</div>
+        <button
+          className="btn-ghost btn-sm"
+          onClick={() => setSubmitted(false)}
+        >
+          {isEditing ? "Edit Again" : "View My Picks"}
+        </button>
+      </div>
+    );
+  }
+
+  const tiersRemaining = mastersData.tiers.filter((t) => !picks[t.tier]).length;
+
   return (
     <div className="max-w-lg mx-auto fade-up">
-      {/* Who's entering */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-4 px-1">
         <div>
-          <div className="text-[11px] text-t3 font-display tracking-wider">ENTERING AS</div>
+          <div className="text-[11px] text-t3 font-display tracking-wider">
+            {isEditing ? "EDITING ENTRY" : "ENTERING AS"}
+          </div>
           <div className="font-display text-[18px] tracking-wide text-gold">{player?.name}</div>
         </div>
         <div className="text-[11px] text-t3">{entries.length} / {MAX_ENTRIES} entries</div>
       </div>
 
+      {isEditing && (
+        <div className="card p-3 mb-4 flex items-center gap-2" style={{ borderColor: "var(--gold-dim)" }}>
+          <span className="text-gold text-xs">✏️</span>
+          <div className="text-[11px] text-t2">
+            You've already entered. Changes are allowed until April 9 at 2:00 AM.
+          </div>
+        </div>
+      )}
+
       {/* Tier sections */}
       {mastersData.tiers.map((tier) => (
         <div key={tier.tier} className="mb-4">
-          <div className="section-label mb-2">
-            {tier.label} — PICK {tier.picks}
-          </div>
+          <div className="section-label mb-2">{tier.label} — PICK {tier.picks}</div>
           <div className="card overflow-hidden">
-            {tier.players.map((player) => {
-              const isSelected = picks[tier.tier] === player.name;
+            {tier.players.map((p) => {
+              const isSelected = picks[tier.tier] === p.name;
               return (
                 <button
-                  key={player.name}
+                  key={p.name}
                   className={[
                     "w-full flex items-center gap-3 px-4 min-h-[44px] text-left border-none cursor-pointer transition-colors active:opacity-70",
                     isSelected
                       ? "bg-bg3 border-l-2 border-l-gold"
                       : "bg-transparent border-l-2 border-l-transparent",
                   ].join(" ")}
-                  onClick={() => togglePick(tier.tier, player.name)}
+                  onClick={() => togglePick(tier.tier, p.name)}
                 >
-                  {/* Checkbox */}
                   <div
                     className={[
                       "w-4 h-4 rounded shrink-0 flex items-center justify-center border transition-colors",
@@ -385,20 +519,14 @@ function EnterPicksTab({ entries, notify }) {
                       </span>
                     )}
                   </div>
-
-                  {/* Name */}
                   <div className={`flex-1 text-[14px] ${isSelected ? "text-text" : "text-t2"}`}>
-                    {player.name}
+                    {p.name}
                   </div>
-
-                  {/* WR */}
                   <div className="text-[11px] text-t3 w-8 text-right shrink-0">
-                    {player.wr != null ? `#${player.wr}` : "—"}
+                    {p.wr != null ? `#${p.wr}` : "—"}
                   </div>
-
-                  {/* Odds */}
                   <div className="text-[11px] text-t2 w-14 text-right shrink-0 font-mono">
-                    {player.odds}
+                    {p.odds}
                   </div>
                 </button>
               );
@@ -407,19 +535,41 @@ function EnterPicksTab({ entries, notify }) {
         </div>
       ))}
 
+      {/* Tiebreaker */}
+      <div className="card p-4 mb-4">
+        <label className="text-[11px] text-t2 font-display tracking-wider block mb-1.5">
+          TIEBREAKER — Winning score (relative to par, e.g. −16)
+        </label>
+        <input
+          type="number"
+          className="w-full text-center"
+          placeholder="e.g. -16"
+          value={tiebreaker}
+          onChange={(e) => setTiebreaker(e.target.value)}
+          style={{ fontSize: 22, letterSpacing: 2 }}
+        />
+        <div className="text-[11px] text-t3 text-center mt-1.5">
+          Closest guess breaks ties between equal team totals
+        </div>
+      </div>
+
       {/* Submit */}
       <div className="sticky bottom-20 md:bottom-4 pt-2 pb-1">
         <button
           className="btn-gold w-full"
           onClick={submit}
-          disabled={submitting || !allPicked}
-          style={{ opacity: allPicked ? 1 : 0.5 }}
+          disabled={submitting || !allPicked || tiebreaker === ""}
+          style={{ opacity: allPicked && tiebreaker !== "" ? 1 : 0.5 }}
         >
           {submitting
             ? "SUBMITTING…"
-            : allPicked
-            ? "SUBMIT PICKS — $10 ENTRY"
-            : `${mastersData.tiers.filter((t) => !picks[t.tier]).length} TIER${mastersData.tiers.filter((t) => !picks[t.tier]).length === 1 ? "" : "S"} REMAINING`}
+            : !allPicked
+            ? `${tiersRemaining} TIER${tiersRemaining === 1 ? "" : "S"} REMAINING`
+            : tiebreaker === ""
+            ? "ENTER TIEBREAKER TO SUBMIT"
+            : isEditing
+            ? "UPDATE MY PICKS"
+            : "SUBMIT PICKS — $10 ENTRY"}
         </button>
       </div>
 
@@ -430,8 +580,9 @@ function EnterPicksTab({ entries, notify }) {
           <div>Pick 1 golfer from each of 6 tiers</div>
           <div>Best 4 of 6 scores count toward your team total</div>
           <div>Missed cut = +80 per remaining round</div>
-          <div>Lowest team total wins</div>
+          <div>Lowest team total wins · tiebreaker: closest winning score (relative to par)</div>
           <div>$10 entry · up to {MAX_ENTRIES} people</div>
+          <div>Picks lock April 9 at 2:00 AM</div>
           <div className="pt-1 text-t3">Payout: 60% / 30% / 10%</div>
         </div>
       </div>
@@ -446,6 +597,7 @@ function AdminTab({ entries, scores, notify }) {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
   const [localScores, setLocalScores] = useState({});
+  const [winningScoreInput, setWinningScoreInput] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -462,6 +614,7 @@ function AdminTab({ entries, scores, notify }) {
         };
       });
       setLocalScores(init);
+      setWinningScoreInput(scores.winningScore ?? "");
     }
   }, [unlocked, scores]);
 
@@ -488,6 +641,9 @@ function AdminTab({ entries, scores, notify }) {
           missedCut: !!g.missedCut,
         };
       });
+      if (winningScoreInput !== "" && winningScoreInput != null) {
+        clean.winningScore = parseInt(winningScoreInput);
+      }
       await setDoc(doc(db, "masters_pool", "scores"), clean);
       notify("Scores saved!");
     } catch (e) {
@@ -533,6 +689,26 @@ function AdminTab({ entries, scores, notify }) {
 
   return (
     <div className="fade-up">
+      {/* Winning score */}
+      <div className="section-label mb-2">TOURNAMENT RESULT</div>
+      <div className="card p-4 mb-6">
+        <label className="text-[11px] text-t2 font-display tracking-wider block mb-1.5">
+          WINNING SCORE (relative to par, e.g. −16)
+        </label>
+        <input
+          type="number"
+          className="w-full text-center"
+          placeholder="e.g. -16"
+          value={winningScoreInput}
+          onChange={(e) => setWinningScoreInput(e.target.value)}
+          style={{ fontSize: 22, letterSpacing: 2 }}
+        />
+        <div className="text-[11px] text-t3 mt-1.5">
+          Used to resolve tiebreakers — set after the tournament ends.
+        </div>
+      </div>
+
+      {/* Golfer scores */}
       <div className="section-label mb-2">ENTER GOLFER SCORES</div>
       <div className="text-[11px] text-t3 mb-4">
         Enter raw round scores (e.g. 68, 71). Check MC for missed cut — +80 added per remaining round.
@@ -595,6 +771,11 @@ function AdminTab({ entries, scores, notify }) {
               <div className="text-[14px] font-semibold truncate">{e.name}</div>
               <div className="text-[10px] text-t3 mt-0.5">
                 {new Date(e.submittedAt).toLocaleString()}
+                {e.tiebreaker != null && (
+                  <span className="ml-2 text-t3">
+                    TB: {e.tiebreaker > 0 ? `+${e.tiebreaker}` : e.tiebreaker}
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -628,6 +809,8 @@ export default function MastersPool({ notify }) {
     return () => { unsubEntries(); unsubScores(); };
   }, []);
 
+  const winningScore = scores.winningScore ?? null;
+
   const tabBtn = (id, label) => (
     <button
       key={id}
@@ -660,7 +843,12 @@ export default function MastersPool({ notify }) {
       </div>
 
       {tab === "leaderboard" && (
-        <LeaderboardTab entries={entries} scores={scores} loading={loading} />
+        <LeaderboardTab
+          entries={entries}
+          scores={scores}
+          loading={loading}
+          winningScore={winningScore}
+        />
       )}
       {tab === "picks" && (
         <EnterPicksTab entries={entries} notify={notify} />
