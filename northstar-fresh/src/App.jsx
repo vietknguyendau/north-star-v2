@@ -24,14 +24,15 @@ import LoginView from "./screens/LoginView";
 import MyScoresLogin from "./screens/MyScoresLogin";
 import MyScores from "./screens/MyScores";
 import SidebetsLogin from "./screens/SidebetsLogin";
+import MastersPool from "./screens/MastersPool";
 
 // ── Mobile bottom nav split ───────────────────────────────────────────────────
 const NAV_BOTTOM_PRIMARY = [
-  { id: "leaderboard", icon: "🏆", label: "BOARD"  },
-  { id: "tournament",  icon: "⛳", label: "EVENTS" },
-  { id: "sidebets",    icon: "🤝", label: "BETS"   },
-  { id: "season",      icon: "🌟", label: "SEASON" },
-  { id: "login",       icon: "✏️", label: "MY GAME"},
+  { id: "leaderboard", icon: "🏆", label: "BOARD"   },
+  { id: "tournament",  icon: "⛳", label: "EVENTS"  },
+  { id: "masters",     icon: "🟢", label: "MASTERS" },
+  { id: "sidebets",    icon: "🤝", label: "BETS"    },
+  { id: "login",       icon: "✏️", label: "MY GAME" },
 ];
 const NAV_MORE = [
   { id: "rules",    icon: "📋", label: "RULES"     },
@@ -40,6 +41,7 @@ const NAV_MORE = [
   { id: "amateurs", icon: "👥", label: "MEMBERS"   },
   { id: "history",  icon: "📖", label: "HISTORY"   },
   { id: "register", icon: "➕", label: "REGISTER"  },
+  { id: "season",   icon: "🌟", label: "SEASON"    },
   { id: "admin",    icon: "⚙️", label: "ADMIN"     },
 ];
 
@@ -132,6 +134,7 @@ function AppInner() {
   const NAV_PRIMARY = [
     ["leaderboard","🏆 LEADERBOARD"],
     ["tournament", "⛳ TOURNAMENTS"],
+    ["masters",    "🟢 MASTERS POOL"],
     ["season",     "🌟 STANDINGS"  ],
     ["rules",      "📋 RULES"      ],
     ["course",     "🗺 COURSE"     ],
@@ -248,6 +251,7 @@ function AppInner() {
       {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div className={`max-w-[1100px] mx-auto px-4 pt-6 ${hideBottomNav ? "pb-6" : "pb-24 md:pb-8"}`}>
         {screen==="leaderboard"   && <LeaderboardScreen setSelectedPid={setSelectedPid} setScreen={setScreen} notify={notify} />}
+        {screen==="masters"       && <MastersPool notify={notify} />}
         {screen==="tournament"    && <TournamentTab activeHole={activeHole} setActiveHole={setActiveHole} setScreen={setScreen} notify={notify} />}
         {(screen==="my-scores"||screen==="tournament-scores") && <MyScores activeHole={activeHole} setActiveHole={setActiveHole} updateScore={updateScore} notify={notify} setScreen={setScreen} />}
         {screen==="scorecard"     && <ScorecardView selectedPid={selectedPid} setSelectedPid={setSelectedPid} updateScore={updateScore} />}
