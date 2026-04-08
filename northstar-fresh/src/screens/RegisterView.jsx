@@ -44,80 +44,94 @@ export default function RegisterView({ notify, setScreen }) {
   };
 
   return (
-    <div className="fade-up" style={{maxWidth:460,margin:"0 auto"}}>
+    <div className="fade-up max-w-lg mx-auto">
       {!regSuccess ? (
         <>
-          <div style={{textAlign:"center",marginBottom:28}}>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--green)",marginBottom:8}}>JOIN THE TOURNAMENT</div>
-            <h2 style={{fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:2}}>PLAYER REGISTRATION</h2>
-            <p style={{fontSize:14,color:"var(--text2)",marginTop:8,lineHeight:1.7}}>Fill in your details below to join the North Star Amateur Series.</p>
+          <div className="text-center mb-7">
+            <div className="font-display text-[13px] tracking-[4px] text-green mb-2">JOIN THE TOURNAMENT</div>
+            <h2 className="font-display text-4xl tracking-[2px]">PLAYER REGISTRATION</h2>
+            <p className="text-[14px] text-t2 mt-2 leading-relaxed">Fill in your details below to join the North Star Amateur Series.</p>
           </div>
-          <div className="card" style={{padding:28}}>
-            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+          <div className="card p-7">
+            <div className="flex flex-col gap-4">
               <div>
                 <div className="section-label">FULL NAME</div>
-                <input defaultValue={regForm.name} onBlur={e=>setRegForm(f=>({...f,name:e.target.value}))} placeholder="First Last" style={{width:"100%"}}/>
+                <input defaultValue={regForm.name} onBlur={e=>setRegForm(f=>({...f,name:e.target.value}))} placeholder="First Last" className="w-full"/>
               </div>
+
               <div>
                 <div className="section-label">EMAIL ADDRESS</div>
-                <input type="email" defaultValue={regForm.email} onBlur={e=>setRegForm(f=>({...f,email:e.target.value}))} placeholder="you@email.com" style={{width:"100%"}}/>
-                <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>For tournament updates and announcements only.</div>
+                <input type="email" defaultValue={regForm.email} onBlur={e=>setRegForm(f=>({...f,email:e.target.value}))} placeholder="you@email.com" className="w-full"/>
+                <div className="text-[11px] text-t3 mt-1">For tournament updates and announcements only.</div>
               </div>
-              <div style={{display:"flex",gap:12}}>
-                <div style={{flex:1}}>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
                   <div className="section-label">HANDICAP INDEX</div>
-                  <input type="number" defaultValue={regForm.handicap} onBlur={e=>setRegForm(f=>({...f,handicap:e.target.value}))} placeholder="0" min="0" max="54" style={{width:"100%"}}/>
-                  <div style={{fontSize:11,color:"var(--amber)",marginTop:5,lineHeight:1.4}}>⚠ Commissioner verifies before Event 1. Have your Grint screenshot ready.</div>
+                  <input type="number" defaultValue={regForm.handicap} onBlur={e=>setRegForm(f=>({...f,handicap:e.target.value}))} placeholder="0" min="0" max="54" className="w-full"/>
+                  <div className="text-[11px] text-amber mt-1 leading-snug">⚠ Commissioner verifies before Event 1. Have your Grint screenshot ready.</div>
                 </div>
-                <div style={{flex:2}}>
+                <div className="flex-[2]">
                   <div className="section-label">SKILL LEVEL</div>
-                  <select value={regForm.flight} onChange={e=>setRegForm(f=>({...f,flight:e.target.value}))} style={{width:"100%"}}>
+                  <select value={regForm.flight} onChange={e=>setRegForm(f=>({...f,flight:e.target.value}))} className="w-full">
                     {SKILL_LEVELS.map(f=><option key={f}>{f}</option>)}
                   </select>
                 </div>
               </div>
-              <div style={{display:"flex",gap:12}}>
-                <div style={{flex:1}}>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
                   <div className="section-label">YOUR PIN</div>
-                  <input type="password" maxLength={4} defaultValue={regForm.pin} onBlur={e=>setRegForm(f=>({...f,pin:e.target.value.replace(/\D/g,"")}))} placeholder="4 digits" style={{width:"100%",letterSpacing:6,textAlign:"center",fontSize:18}}/>
+                  <input type="password" maxLength={4} defaultValue={regForm.pin}
+                    onBlur={e=>setRegForm(f=>({...f,pin:e.target.value.replace(/\D/g,"")}))}
+                    placeholder="4 digits" className="w-full text-center" style={{letterSpacing:6,fontSize:18}}/>
                 </div>
-                <div style={{flex:1}}>
+                <div className="flex-1">
                   <div className="section-label">CONFIRM PIN</div>
-                  <input type="password" maxLength={4} defaultValue={regForm.pin2} onBlur={e=>setRegForm(f=>({...f,pin2:e.target.value.replace(/\D/g,"")}))} placeholder="4 digits" style={{width:"100%",letterSpacing:6,textAlign:"center",fontSize:18}}/>
+                  <input type="password" maxLength={4} defaultValue={regForm.pin2}
+                    onBlur={e=>setRegForm(f=>({...f,pin2:e.target.value.replace(/\D/g,"")}))}
+                    placeholder="4 digits" className="w-full text-center" style={{letterSpacing:6,fontSize:18}}/>
                 </div>
               </div>
-              <div style={{fontSize:12,color:"var(--text3)",fontStyle:"italic"}}>🔒 Your PIN protects your scorecard. Only you (and the commissioner) can edit your scores.</div>
+              <div className="text-[12px] text-t3 italic">🔒 Your PIN protects your scorecard. Only you (and the commissioner) can edit your scores.</div>
 
               {activeOneOff?.hasPassword && (
-                <div style={{marginTop:16,padding:"12px 16px",background:"#0a1a0a",border:"1px solid var(--green)",borderRadius:4}}>
-                  <div className="section-label" style={{color:"var(--green)",marginBottom:6}}>🟢 TOURNAMENT IN PROGRESS: {activeOneOff.title}</div>
-                  <div style={{fontSize:12,color:"var(--text3)",marginBottom:8}}>Have a tournament password? Enter it to join the leaderboard.</div>
-                  <input defaultValue={regForm.tourneyPw} onBlur={e=>setRegForm(f=>({...f,tourneyPw:e.target.value}))}
-                    placeholder="Tournament password" style={{width:"100%",fontSize:14}}/>
+                <div className="mt-4 p-4 rounded-[4px]" style={{background:"#0a1a0a",border:"1px solid var(--green)"}}>
+                  <div className="section-label text-green mb-1.5">🟢 TOURNAMENT IN PROGRESS: {activeOneOff.title}</div>
+                  <div className="text-[12px] text-t3 mb-2">Have a tournament password? Enter it to join the leaderboard.</div>
+                  <input defaultValue={regForm.tourneyPw}
+                    onBlur={e=>setRegForm(f=>({...f,tourneyPw:e.target.value}))}
+                    placeholder="Tournament password" className="w-full text-[14px]"/>
                 </div>
               )}
 
-              <div style={{marginTop:4,padding:"12px 16px",background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:4}}>
-                <div className="section-label" style={{marginBottom:6}}>🔒 LEAGUE PASSWORD</div>
-                <input defaultValue={regForm.leagueCode} onBlur={e=>setRegForm(f=>({...f,leagueCode:e.target.value}))}
-                  placeholder="Enter league password" style={{width:"100%"}}/>
-                <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Get this from the commissioner to complete registration.</div>
+              <div className="p-4 rounded-[4px] bg-bg3 border border-border2">
+                <div className="section-label mb-1.5">🔒 LEAGUE PASSWORD</div>
+                <input defaultValue={regForm.leagueCode}
+                  onBlur={e=>setRegForm(f=>({...f,leagueCode:e.target.value}))}
+                  placeholder="Enter league password" className="w-full"/>
+                <div className="text-[11px] text-t3 mt-1">Get this from the commissioner to complete registration.</div>
               </div>
 
-              {regError && <div style={{fontSize:13,color:"var(--red)",background:"#2a0808",border:"1px solid #4a1010",padding:"10px 14px",borderRadius:4}}>{regError}</div>}
-              <button className="btn-gold" style={{width:"100%",padding:13,fontSize:15,marginTop:4}} onClick={handleRegister}>REGISTER &amp; JOIN →</button>
+              {regError && (
+                <div className="text-[13px] text-red bg-[#2a0808] border border-[#4a1010] px-3.5 py-2.5 rounded-[4px]">{regError}</div>
+              )}
+              <button className="btn-gold w-full py-3.5 text-[15px] mt-1" onClick={handleRegister}>REGISTER &amp; JOIN →</button>
             </div>
           </div>
-          <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"var(--text3)"}}>
-            Already registered? <span style={{color:"var(--gold)",cursor:"pointer"}} onClick={()=>setScreen("my-scores-login")}>Enter scores →</span>
+
+          <div className="text-center mt-4 text-[13px] text-t3">
+            Already registered?{" "}
+            <span className="text-gold cursor-pointer" onClick={()=>setScreen("my-scores-login")}>Enter scores →</span>
           </div>
         </>
       ) : (
-        <div style={{textAlign:"center",paddingTop:40}}>
-          <div style={{fontSize:52,marginBottom:16}}>🏌️</div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:2,color:"var(--gold)",marginBottom:10}}>YOU'RE IN!</div>
-          <p style={{fontSize:16,color:"var(--text2)",marginBottom:28,lineHeight:1.8}}>Welcome! Good luck out there.</p>
-          <button className="btn-gold" style={{padding:"12px 32px",fontSize:14}} onClick={()=>setScreen("my-scores")}>START ENTERING SCORES →</button>
+        <div className="text-center pt-10">
+          <div className="text-[52px] mb-4">🏌️</div>
+          <div className="font-display text-4xl tracking-[2px] text-gold mb-2.5">YOU'RE IN!</div>
+          <p className="text-[16px] text-t2 mb-7 leading-relaxed">Welcome! Good luck out there.</p>
+          <button className="btn-gold px-8 py-3 text-[14px]" onClick={()=>setScreen("my-scores")}>START ENTERING SCORES →</button>
         </div>
       )}
     </div>

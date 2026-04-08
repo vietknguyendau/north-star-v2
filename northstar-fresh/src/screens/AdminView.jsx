@@ -66,20 +66,20 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
   };
 
   if (!adminUnlocked) return (
-    <div className="fade-up" style={{maxWidth:340,margin:"0 auto",textAlign:"center"}}>
-      <div style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:4,color:"var(--green)",marginBottom:10}}>COMMISSIONER ACCESS</div>
-      <h2 style={{fontFamily:"'Bebas Neue'",fontSize:28,marginBottom:24}}>ADMIN LOGIN</h2>
-      <div className="card" style={{padding:28}}>
-        <div className="section-label" style={{textAlign:"left"}}>PIN</div>
+    <div className="fade-up max-w-xs mx-auto text-center">
+      <div className="font-display text-[12px] tracking-[4px] text-green mb-2.5">COMMISSIONER ACCESS</div>
+      <h2 className="font-display text-[28px] mb-6">ADMIN LOGIN</h2>
+      <div className="card p-7">
+        <div className="section-label text-left">PIN</div>
         <input type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)}
           onKeyDown={e=>{ if(e.key==="Enter"){ if(pinInput===ADMIN_PIN)setAdminUnlocked(true); else setPinError(true); }}}
-          placeholder="••••" style={{width:"100%",fontSize:24,letterSpacing:8,textAlign:"center",marginBottom:10}}/>
-        {pinError && <div style={{color:"var(--red)",fontSize:13,marginBottom:10}}>Incorrect PIN.</div>}
-        <button className="btn-gold" style={{width:"100%"}}
+          placeholder="••••" className="w-full text-center mb-2.5" style={{fontSize:24,letterSpacing:8}}/>
+        {pinError && <div className="text-red text-[13px] mb-2.5">Incorrect PIN.</div>}
+        <button className="btn-gold w-full"
           onClick={()=>{ if(pinInput===ADMIN_PIN){setAdminUnlocked(true);setPinError(false);}else setPinError(true); }}>
           UNLOCK
         </button>
-        <div style={{fontSize:11,color:"var(--text3)",marginTop:12}}>Default PIN: 1234</div>
+        <div className="text-[11px] text-t3 mt-3">Default PIN: 1234</div>
       </div>
     </div>
   );
@@ -88,10 +88,10 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
     <div className="fade-up">
       {/* Course settings */}
       <div className="section-label">── COURSE SETTINGS</div>
-      <div className="card" style={{padding:20,marginBottom:24}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-          <div style={{gridColumn:"1/-1"}}>
-            <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>SEARCH MINNESOTA COURSES</div>
+      <div className="card p-5 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div className="md:col-span-2">
+            <div className="font-display text-[10px] tracking-[1px] text-t3 mb-1">SEARCH MINNESOTA COURSES</div>
             <CourseSearch onSelect={c=>{
               setLocalCourse(prev=>({...prev,name:c.name,city:c.city,slope:c.slope,rating:c.rating,
                 par:DEFAULT_PAR,
@@ -102,27 +102,18 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
           </div>
 
           {courseLibrary.length > 0 && (
-            <div style={{gridColumn:"1/-1"}}>
-              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:6}}>── OR LOAD FROM YOUR LIBRARY ({courseLibrary.length} saved)</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:200,overflowY:"auto",
-                background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:8}}>
+            <div className="md:col-span-2">
+              <div className="font-display text-[10px] tracking-[1px] text-t3 mb-1.5">── OR LOAD FROM YOUR LIBRARY ({courseLibrary.length} saved)</div>
+              <div className="flex flex-col gap-1.5 max-h-[200px] overflow-y-auto bg-bg border border-border rounded-[6px] p-2">
                 {courseLibrary.map(c => (
                   <div key={c.id}
-                    onClick={()=>{
-                      setLocalCourse(c);
-                      setCourseKey(k=>k+1);
-                      notify(`Loaded "${c.name}" from library`);
-                    }}
-                    style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-                      padding:"9px 12px",borderRadius:4,cursor:"pointer",background:"var(--bg2)",
-                      border:"1px solid var(--border)",transition:"border-color 0.15s"}}
-                    onMouseEnter={e=>e.currentTarget.style.borderColor="var(--gold)"}
-                    onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
+                    onClick={()=>{ setLocalCourse(c); setCourseKey(k=>k+1); notify(`Loaded "${c.name}" from library`); }}
+                    className="flex justify-between items-center px-3 py-2.5 rounded-[4px] cursor-pointer bg-bg2 border border-border transition-colors duration-150 hover:border-gold min-h-[48px]">
                     <div>
-                      <div style={{fontSize:14,color:"var(--text)",fontWeight:600}}>{c.name}</div>
-                      <div style={{fontSize:11,color:"var(--text3)"}}>{c.city}</div>
+                      <div className="text-[14px] text-text font-semibold">{c.name}</div>
+                      <div className="text-[11px] text-t3">{c.city}</div>
                     </div>
-                    <div style={{textAlign:"right",fontSize:11,color:"var(--text3)"}}>
+                    <div className="text-right text-[11px] text-t3">
                       <div>Par {(c.par||[]).reduce((a,b)=>a+b,0)||"—"}</div>
                       <div>Slope {c.slope} · {c.rating}</div>
                     </div>
@@ -131,22 +122,23 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
               </div>
             </div>
           )}
+
           {[["Course Name","name",nameRef],["City / State","city",cityRef],["Slope Rating","slope",slopeRef],["Course Rating","rating",ratingRef]].map(([lbl,key,ref])=>(
             <div key={key}>
-              <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>{lbl.toUpperCase()}</div>
+              <div className="font-display text-[10px] tracking-[1px] text-t3 mb-1">{lbl.toUpperCase()}</div>
               <input ref={ref} defaultValue={localCourse[key]??""} type={key==="slope"||key==="rating"?"number":"text"}
                 step={key==="rating"?".1":undefined}
-                style={{width:"100%"}}/>
+                className="w-full"/>
             </div>
           ))}
         </div>
 
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:8}}>PAR PER HOLE (1–18)</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        <div className="mb-3">
+          <div className="font-display text-[10px] tracking-[1px] text-t3 mb-2">PAR PER HOLE (1–18)</div>
+          <div className="flex flex-wrap gap-1.5">
             {Array.from({length:18},(_,i)=>(
-              <div key={i} style={{textAlign:"center"}}>
-                <div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>{i+1}</div>
+              <div key={i} className="text-center">
+                <div className="font-display text-[9px] text-t3 mb-0.5">{i+1}</div>
                 <input ref={parRefs.current[i]} type="number" min="3" max="6"
                   defaultValue={(localCourse.par||DEFAULT_PAR)[i]}
                   style={{width:40,textAlign:"center",padding:"4px 2px"}}/>
@@ -155,12 +147,12 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
           </div>
         </div>
 
-        <div style={{marginBottom:16}}>
-          <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:8}}>YARDAGE PER HOLE (1–18)</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        <div className="mb-4">
+          <div className="font-display text-[10px] tracking-[1px] text-t3 mb-2">YARDAGE PER HOLE (1–18)</div>
+          <div className="flex flex-wrap gap-1.5">
             {Array.from({length:18},(_,i)=>(
-              <div key={i} style={{textAlign:"center"}}>
-                <div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>{i+1}</div>
+              <div key={i} className="text-center">
+                <div className="font-display text-[9px] text-t3 mb-0.5">{i+1}</div>
                 <input ref={yardsRefs.current[i]} type="number" min="100" max="700"
                   defaultValue={(localCourse.yards||DEFAULT_YARDS)[i]}
                   style={{width:52,textAlign:"center",padding:"4px 2px"}}/>
@@ -169,16 +161,16 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
           </div>
         </div>
 
-        <div style={{marginBottom:16}}>
-          <div style={{fontSize:10,color:"var(--text3)",letterSpacing:1,marginBottom:4}}>DESCRIPTION</div>
-          <textarea ref={descRef} defaultValue={localCourse.description??""} rows={3} style={{width:"100%",resize:"vertical"}}/>
+        <div className="mb-4">
+          <div className="font-display text-[10px] tracking-[1px] text-t3 mb-1">DESCRIPTION</div>
+          <textarea ref={descRef} defaultValue={localCourse.description??""} rows={3} className="w-full" style={{resize:"vertical"}}/>
         </div>
 
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          <button className="btn-gold" onClick={saveAll} disabled={saving} style={{fontSize:13,flex:1}}>
+        <div className="flex gap-2.5 flex-wrap">
+          <button className="btn-gold text-[13px] flex-1" onClick={saveAll} disabled={saving}>
             {saving?"SAVING…":"SAVE AS ACTIVE COURSE"}
           </button>
-          <button className="btn-ghost" onClick={saveToLib} style={{fontSize:13,flex:1}}>
+          <button className="btn-ghost text-[13px] flex-1" onClick={saveToLib}>
             📚 SAVE TO LIBRARY
           </button>
         </div>
@@ -186,43 +178,51 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
 
       {/* Players */}
       <div className="section-label">── PLAYER ROSTER ({players.length} players)</div>
-      <div className="card" style={{overflow:"hidden",marginBottom:12}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px auto auto",background:"var(--bg3)",padding:"9px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
-          <span>NAME</span><span>HCP</span><span>SKILL LEVEL</span><span>PIN</span><span></span>
-        </div>
-        {players.map(p => {
-          return (
+      <div className="card overflow-hidden mb-3 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div style={{ minWidth: 560 }}>
+          <div
+            className="grid bg-bg3 px-4 py-2.5 font-display text-[10px] tracking-[2px] text-t3"
+            style={{ gridTemplateColumns: "1fr 80px 150px auto auto" }}
+          >
+            <span>NAME</span><span>HCP</span><span>SKILL LEVEL</span><span>PIN</span><span></span>
+          </div>
+          {players.map(p => (
             <React.Fragment key={p.id}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 80px 150px auto auto",padding:"10px 16px",borderBottom:"1px solid var(--border)",alignItems:"center",gap:8}}>
-                <input defaultValue={p.name} key={p.id+"-name"} onBlur={e=>updateField(p.id,"name",e.target.value)} style={{width:"100%",padding:"5px 8px"}}/>
+              <div
+                className="grid px-4 py-2.5 border-b border-border items-center gap-2"
+                style={{ gridTemplateColumns: "1fr 80px 150px auto auto" }}
+              >
+                <input defaultValue={p.name} key={p.id+"-name"} onBlur={e=>updateField(p.id,"name",e.target.value)} className="w-full" style={{padding:"5px 8px"}}/>
                 <input type="number" defaultValue={p.handicap} key={p.id+"-hcp"} onBlur={e=>updateField(p.id,"handicap",e.target.value)} min="0" max="54" style={{width:65,borderColor:"var(--gold-dim)"}} title="Commissioner verified handicap"/>
-                <select value={p.flight} onChange={e=>updateField(p.id,"flight",e.target.value)} style={{width:"100%"}}>
+                <select value={p.flight} onChange={e=>updateField(p.id,"flight",e.target.value)} className="w-full">
                   {SKILL_LEVELS.map(f=><option key={f}>{f}</option>)}
                 </select>
                 <PinResetButton player={p} notify={notify}/>
                 <button className="btn-danger" onClick={()=>removePlayerDb(p.id)}>✕</button>
               </div>
               {!scorecardUploads?.[p.id]?.url && (
-                <div style={{padding:"6px 12px 10px",fontSize:11,color:"var(--text3)",fontStyle:"italic",borderTop:"1px solid var(--border)"}}>
+                <div className="px-3 pb-2.5 pt-1.5 text-[11px] text-t3 italic border-t border-border">
                   No scorecard uploaded yet.
                 </div>
               )}
               {scorecardUploads?.[p.id]?.url && (
-                <div style={{padding:"10px 12px",borderTop:"1px solid var(--border)",display:"flex",gap:12,alignItems:"flex-start",flexWrap:"wrap",background:"var(--bg3)"}}>
-                  <img src={scorecardUploads[p.id].url} alt="Scorecard" style={{width:100,height:70,objectFit:"cover",borderRadius:3,border:"1px solid var(--border2)",cursor:"pointer"}}
+                <div className="px-3 py-2.5 border-t border-border flex gap-3 items-start flex-wrap bg-bg3">
+                  <img src={scorecardUploads[p.id].url} alt="Scorecard"
+                    className="rounded-[3px] border border-border2 cursor-pointer object-cover"
+                    style={{width:100,height:70}}
                     onClick={()=>window.open(scorecardUploads[p.id].url,"_blank")}/>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:11,color:"var(--text3)",marginBottom:6}}>📸 Uploaded: {scorecardUploads[p.id].uploadedAt}</div>
+                  <div className="flex-1">
+                    <div className="text-[11px] text-t3 mb-1.5">📸 Uploaded: {scorecardUploads[p.id].uploadedAt}</div>
                     {scorecardUploads[p.id].verified ? (
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:11,color:"var(--green)",fontFamily:"'Bebas Neue'",letterSpacing:1}}>✓ VERIFIED · {scorecardUploads[p.id].verifiedAt}</span>
-                        <button className="btn-ghost" style={{fontSize:10,padding:"2px 8px",color:"var(--amber)",borderColor:"var(--amber)"}}
+                      <div className="flex items-center gap-2">
+                        <span className="font-display text-[11px] tracking-[1px] text-green">✓ VERIFIED · {scorecardUploads[p.id].verifiedAt}</span>
+                        <button className="btn-ghost text-[10px] px-2 py-[2px]" style={{color:"var(--amber)",borderColor:"var(--amber)"}}
                           onClick={async()=>{ try { await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"scorecard_uploads",p.id),{...scorecardUploads[p.id],verified:false}); notify("Verification removed."); } catch(e) { console.error(e); notify("Failed — check connection.","error"); } }}>
                           UNVERIFY
                         </button>
                       </div>
                     ) : (
-                      <button className="btn-gold" style={{fontSize:11,padding:"5px 14px"}}
+                      <button className="btn-gold text-[11px] py-1.5 px-3.5"
                         onClick={async()=>{ try { await setDoc(doc(db,"tournaments",TOURNAMENT_ID,"scorecard_uploads",p.id),{...scorecardUploads[p.id],verified:true,verifiedAt:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}); notify(`${p.name} verified! ✓`); } catch(e) { console.error(e); notify("Failed — check connection.","error"); } }}>
                         ✓ MARK AS VERIFIED
                       </button>
@@ -231,11 +231,13 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
                 </div>
               )}
             </React.Fragment>
-          );
-        })}
-        {players.length===0 && <div style={{padding:24,textAlign:"center",color:"var(--text3)",fontSize:13}}>No players yet. They'll appear here once they register.</div>}
+          ))}
+          {players.length===0 && (
+            <div className="p-6 text-center text-t3 text-[13px]">No players yet. They'll appear here once they register.</div>
+          )}
+        </div>
       </div>
-      <button className="btn-gold" style={{fontSize:13}} onClick={async()=>{
+      <button className="btn-gold text-[13px]" onClick={async()=>{
         const np={id:`player-${Date.now()}`,name:"New Player",handicap:0,flight:"Mid (13-20)",scores:Array(18).fill(null)};
         await savePlayer(np);
         notify("Player added.");
@@ -247,37 +249,36 @@ export default function AdminView({ course, players, adminUnlocked, setAdminUnlo
         const noEmail   = players.filter(p=>!p.email);
         const allEmails = withEmail.map(p=>p.email).join(", ");
         return (
-          <div className="card" style={{padding:20,marginTop:16}}>
-            <div className="section-label" style={{marginBottom:10}}>── EMAIL LIST ({withEmail.length} of {players.length} players)</div>
+          <div className="card p-5 mt-4">
+            <div className="section-label mb-2.5">── EMAIL LIST ({withEmail.length} of {players.length} players)</div>
             {withEmail.length > 0 ? (
               <>
-                <div style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:4,padding:"12px 14px",fontSize:12,fontFamily:"'DM Mono'",color:"var(--text2)",lineHeight:1.8,wordBreak:"break-all",marginBottom:12,maxHeight:120,overflowY:"auto"}}>
+                <div className="bg-bg3 border border-border rounded-[4px] px-3.5 py-3 text-[12px] font-mono text-t2 leading-relaxed break-all mb-3 max-h-[120px] overflow-y-auto">
                   {allEmails}
                 </div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  <button className="btn-gold" style={{fontSize:12}} onClick={()=>{
-                    navigator.clipboard.writeText(allEmails);
-                    notify("Emails copied to clipboard! ✓");
-                  }}>📋 COPY ALL EMAILS</button>
-                  <button className="btn-ghost" style={{fontSize:12}} onClick={()=>{
-                    window.open(`mailto:?bcc=${encodeURIComponent(allEmails)}`,"_blank");
-                  }}>✉️ OPEN IN MAIL APP</button>
+                <div className="flex gap-2 flex-wrap">
+                  <button className="btn-gold text-[12px]" onClick={()=>{ navigator.clipboard.writeText(allEmails); notify("Emails copied to clipboard! ✓"); }}>
+                    📋 COPY ALL EMAILS
+                  </button>
+                  <button className="btn-ghost text-[12px]" onClick={()=>{ window.open(`mailto:?bcc=${encodeURIComponent(allEmails)}`,"_blank"); }}>
+                    ✉️ OPEN IN MAIL APP
+                  </button>
                 </div>
                 {noEmail.length > 0 && (
-                  <div style={{fontSize:11,color:"var(--amber)",marginTop:10}}>
+                  <div className="text-[11px] text-amber mt-2.5">
                     ⚠ {noEmail.length} player{noEmail.length>1?"s":""} without email: {noEmail.map(p=>p.name).join(", ")}
                   </div>
                 )}
               </>
             ) : (
-              <div style={{fontSize:13,color:"var(--text3)",fontStyle:"italic"}}>No player emails on file yet.</div>
+              <div className="text-[13px] text-t3 italic">No player emails on file yet.</div>
             )}
           </div>
         );
       })()}
 
       {/* One-Off Tournament Creator */}
-      <div style={{marginTop:32}}>
+      <div className="mt-8">
         <div className="section-label">── ONE-OFF TOURNAMENTS</div>
         <OneOffCreator players={players} notify={notify} courseLibrary={courseLibrary} pars={pars} />
       </div>

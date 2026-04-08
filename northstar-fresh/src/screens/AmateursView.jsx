@@ -8,46 +8,52 @@ export default function AmateursView({ setScreen }) {
   const spotsLeft = 32 - leagueMembers.length;
 
   return (
-    <div className="fade-up" style={{maxWidth:640,margin:"0 auto"}}>
-      <div style={{marginBottom:28}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:5,color:"var(--green)",marginBottom:6}}>NORTH STAR AMATEUR SERIES · 2026</div>
-        <h2 style={{fontFamily:"'Bebas Neue'",fontSize:36,letterSpacing:2,marginBottom:8}}>MEMBER ROSTER</h2>
-        <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-          <div style={{fontSize:13,color:"var(--text3)"}}>{leagueMembers.length} of 32 league spots filled</div>
-          <div style={{height:6,flex:1,minWidth:120,background:"var(--bg3)",borderRadius:3,overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${(leagueMembers.length/32)*100}%`,background:"var(--green)",borderRadius:3}}/>
+    <div className="fade-up max-w-2xl mx-auto">
+      <div className="mb-7">
+        <div className="font-display text-[11px] tracking-[5px] text-green mb-1.5">NORTH STAR AMATEUR SERIES · 2026</div>
+        <h2 className="font-display text-4xl tracking-[2px] mb-2">MEMBER ROSTER</h2>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="text-[13px] text-t3">{leagueMembers.length} of 32 league spots filled</div>
+          <div className="h-1.5 flex-1 min-w-[80px] bg-bg3 rounded-full overflow-hidden">
+            <div className="h-full bg-green rounded-full" style={{width:`${(leagueMembers.length/32)*100}%`}}/>
           </div>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,color:spotsLeft>0?"var(--amber)":"var(--red)",letterSpacing:1}}>
+          <div className="font-display text-[13px] tracking-[1px]" style={{color:spotsLeft>0?"var(--amber)":"var(--red)"}}>
             {spotsLeft>0?`${spotsLeft} SPOTS LEFT`:"FULL"}
           </div>
         </div>
       </div>
 
-      <div style={{marginBottom:32}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--green)",marginBottom:12}}>
-          ── LEAGUE MEMBERS ({leagueMembers.length})
-        </div>
+      {/* League members */}
+      <div className="mb-8">
+        <div className="font-display text-[11px] tracking-[3px] text-green mb-3">── LEAGUE MEMBERS ({leagueMembers.length})</div>
         {leagueMembers.length === 0 ? (
-          <div style={{padding:"32px 20px",textAlign:"center",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8}}>
-            <div style={{fontSize:32,marginBottom:10}}>⛳</div>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:16,letterSpacing:2,marginBottom:6}}>NO MEMBERS YET</div>
-            <div style={{fontSize:13,color:"var(--text3)"}}>Registration is open — share the league password to get players signed up.</div>
+          <div className="p-8 text-center bg-bg2 border border-border rounded-lg">
+            <div className="text-[32px] mb-2.5">⛳</div>
+            <div className="font-display text-[16px] tracking-[2px] mb-1.5">NO MEMBERS YET</div>
+            <div className="text-[13px] text-t3">Registration is open — share the league password to get players signed up.</div>
           </div>
         ) : (
-          <div className="card" style={{overflow:"hidden"}}>
-            <div style={{display:"grid",gridTemplateColumns:"40px 1fr 70px 110px",background:"var(--bg3)",padding:"8px 16px",fontSize:10,letterSpacing:2,color:"var(--text3)",fontFamily:"'Bebas Neue'"}}>
-              <span>#</span><span>NAME</span><span style={{textAlign:"center"}}>HCP</span><span style={{textAlign:"center"}}>SKILL</span>
+          <div className="card overflow-hidden">
+            <div
+              className="grid bg-bg3 px-4 py-2 font-display text-[10px] tracking-[2px] text-t3"
+              style={{ gridTemplateColumns: "40px 1fr 70px 110px" }}
+            >
+              <span>#</span><span>NAME</span>
+              <span className="text-center">HCP</span>
+              <span className="text-center">SKILL</span>
             </div>
             {leagueMembers.map((p, idx) => (
-              <div key={p.id} style={{display:"grid",gridTemplateColumns:"40px 1fr 70px 110px",padding:"13px 16px",borderBottom:"1px solid var(--border)",alignItems:"center"}}>
-                <div style={{fontFamily:"'Bebas Neue'",fontSize:16,color:"var(--text3)"}}>{idx+1}</div>
+              <div key={p.id}
+                className="grid px-4 py-3.5 border-b border-border last:border-b-0 items-center"
+                style={{ gridTemplateColumns: "40px 1fr 70px 110px" }}>
+                <div className="font-display text-[16px] text-t3">{idx+1}</div>
                 <div>
-                  <div style={{fontSize:16,fontWeight:600,color:"var(--text)"}}>{p.name}</div>
-                  {p.email && <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{p.email}</div>}
+                  <div className="text-[16px] font-semibold text-text">{p.name}</div>
+                  {p.email && <div className="text-[11px] text-t3 mt-px">{p.email}</div>}
                 </div>
-                <div style={{textAlign:"center",fontFamily:"'DM Mono'",fontSize:15,color:"var(--text)"}}>{p.handicap}</div>
-                <div style={{textAlign:"center"}}>
-                  <span style={{fontFamily:"'Bebas Neue'",fontSize:9,letterSpacing:1,color:"var(--text3)",border:"1px solid var(--border2)",borderRadius:3,padding:"2px 7px"}}>{p.flight||"—"}</span>
+                <div className="text-center font-mono text-[15px] text-text">{p.handicap}</div>
+                <div className="text-center">
+                  <span className="font-display text-[9px] tracking-[1px] text-t3 border border-border2 rounded-[3px] px-1.5 py-[2px]">{p.flight||"—"}</span>
                 </div>
               </div>
             ))}
@@ -55,30 +61,30 @@ export default function AmateursView({ setScreen }) {
         )}
       </div>
 
-      <div style={{marginBottom:24}}>
-        <div style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:3,color:"var(--gold)",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      {/* Amateur members */}
+      <div className="mb-6">
+        <div className="font-display text-[11px] tracking-[3px] text-gold mb-3 flex justify-between items-center">
           <span>── AMATEUR MEMBERS ({amateurs.length})</span>
-          <button className="btn-ghost btn-sm" style={{fontSize:10,letterSpacing:1}}
-            onClick={()=>setScreen("amateur-register")}>
+          <button className="btn-ghost btn-sm text-[10px] tracking-[1px]" onClick={()=>setScreen("amateur-register")}>
             + JOIN AS AMATEUR
           </button>
         </div>
         {amateurs.length === 0 ? (
-          <div style={{padding:"20px",textAlign:"center",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8}}>
-            <div style={{fontSize:13,color:"var(--text3)"}}>No amateur members yet.</div>
+          <div className="p-5 text-center bg-bg2 border border-border rounded-lg">
+            <div className="text-[13px] text-t3">No amateur members yet.</div>
           </div>
         ) : (
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <div className="flex flex-col gap-2">
             {amateurs.map((p, idx) => (
-              <div key={p.id} style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <div style={{fontFamily:"'Bebas Neue'",fontSize:16,color:"var(--text3)",minWidth:28}}>{idx+1}</div>
+              <div key={p.id} className="bg-bg2 border border-border rounded-lg px-4 py-3.5 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="font-display text-[16px] text-t3 min-w-[28px]">{idx+1}</div>
                   <div>
-                    <div style={{fontSize:15,fontWeight:600,color:"var(--text)"}}>{p.name}</div>
-                    <div style={{fontSize:11,color:"var(--text3)"}}>HCP {p.handicap}</div>
+                    <div className="text-[15px] font-semibold text-text">{p.name}</div>
+                    <div className="text-[11px] text-t3">HCP {p.handicap}</div>
                   </div>
                 </div>
-                <span style={{fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:2,color:"var(--gold)",border:"1px solid #c8a84a44",borderRadius:3,padding:"2px 8px"}}>AMATEUR</span>
+                <span className="font-display text-[10px] tracking-[2px] text-gold border border-[#c8a84a44] rounded-[3px] px-2 py-px">AMATEUR</span>
               </div>
             ))}
           </div>

@@ -40,33 +40,39 @@ export default function MyScoresLogin({ setScreen, setActiveHole }) {
   };
 
   return (
-    <div className="fade-up" style={{maxWidth:460,margin:"0 auto"}}>
+    <div className="fade-up max-w-lg mx-auto">
       {!pendingPlayer ? (
         <>
-          <div style={{textAlign:"center",marginBottom:24}}>
-            <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--green)",marginBottom:6}}>SCORE ENTRY</div>
-            <h2 style={{fontFamily:"'Bebas Neue'",fontSize:28,letterSpacing:2}}>WHO ARE YOU?</h2>
+          <div className="text-center mb-6">
+            <div className="font-display text-[13px] tracking-[4px] text-green mb-1.5">SCORE ENTRY</div>
+            <h2 className="font-display text-[28px] tracking-[2px]">WHO ARE YOU?</h2>
           </div>
-          <div className="card" style={{overflow:"hidden"}}>
-            {players.length === 0 && <div style={{padding:32,textAlign:"center",color:"var(--text3)",fontSize:14}}>No players registered yet.<br/>Register using the Register tab.</div>}
+          <div className="card overflow-hidden">
+            {players.length === 0 && (
+              <div className="p-8 text-center text-t3 text-[14px]">
+                No players registered yet.<br/>Register using the Register tab.
+              </div>
+            )}
             {players.map(p=>(
-              <div key={p.id} className="player-row" style={{padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}
+              <button
+                key={p.id}
+                className="player-row w-full px-5 py-4 flex justify-between items-center min-h-[64px] bg-transparent border-none cursor-pointer text-left"
                 onClick={()=>{ setPendingPlayer(p); setScorePin(""); setScorePinError(""); }}>
                 <div>
-                  <div style={{fontSize:17,fontWeight:600}}>{p.name}</div>
-                  <div style={{fontSize:12,color:"var(--text3)"}}>HCP {p.handicap} · Thru {holesPlayed(p)||"—"}</div>
+                  <div className="text-[17px] font-semibold text-text">{p.name}</div>
+                  <div className="text-[12px] text-t3">HCP {p.handicap} · Thru {holesPlayed(p)||"—"}</div>
                 </div>
-                <span style={{color:"var(--gold)",fontSize:12,fontFamily:"'Bebas Neue'",letterSpacing:1}}>SELECT →</span>
-              </div>
+                <span className="font-display text-[12px] tracking-[1px] text-gold">SELECT →</span>
+              </button>
             ))}
           </div>
         </>
       ) : (
-        <div style={{textAlign:"center"}}>
-          <div style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:4,color:"var(--green)",marginBottom:8}}>SCORE ENTRY</div>
-          <h2 style={{fontFamily:"'Bebas Neue'",fontSize:28,letterSpacing:2,marginBottom:4}}>{pendingPlayer.name}</h2>
-          <div style={{fontSize:12,color:"var(--text3)",marginBottom:28}}>Enter your 4-digit PIN to continue</div>
-          <div className="card" style={{padding:28,maxWidth:320,margin:"0 auto"}}>
+        <div className="text-center">
+          <div className="font-display text-[13px] tracking-[4px] text-green mb-2">SCORE ENTRY</div>
+          <h2 className="font-display text-[28px] tracking-[2px] mb-1">{pendingPlayer.name}</h2>
+          <div className="text-[12px] text-t3 mb-7">Enter your 4-digit PIN to continue</div>
+          <div className="card p-7 max-w-xs mx-auto">
             <PinKeypad
               pin={scorePin}
               onChange={v => { setScorePin(v); setScorePinError(""); }}
@@ -74,7 +80,11 @@ export default function MyScoresLogin({ setScreen, setActiveHole }) {
               onSubmit={handlePinSubmit}
               submitLabel="ENTER →"
             />
-            <button className="btn-ghost" style={{width:"100%",fontSize:12,marginTop:8}} onClick={()=>{ setPendingPlayer(null); setScorePin(""); setScorePinError(""); }}>← BACK</button>
+            <button
+              className="btn-ghost w-full text-[12px] mt-2"
+              onClick={()=>{ setPendingPlayer(null); setScorePin(""); setScorePinError(""); }}>
+              ← BACK
+            </button>
           </div>
         </div>
       )}
