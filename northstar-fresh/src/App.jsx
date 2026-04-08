@@ -24,14 +24,15 @@ import LoginView from "./screens/LoginView";
 import MyScoresLogin from "./screens/MyScoresLogin";
 import MyScores from "./screens/MyScores";
 import SidebetsLogin from "./screens/SidebetsLogin";
+import MastersPool from "./screens/MastersPool";
 
 // ── Mobile bottom nav split ───────────────────────────────────────────────────
 const NAV_BOTTOM_PRIMARY = [
-  { id: "leaderboard", icon: "🏆", label: "BOARD"  },
-  { id: "tournament",  icon: "⛳", label: "EVENTS" },
-  { id: "sidebets",    icon: "🤝", label: "BETS"   },
-  { id: "season",      icon: "🌟", label: "SEASON" },
-  { id: "login",       icon: "✏️", label: "MY GAME"},
+  { id: "leaderboard", icon: "🏆", label: "BOARD"   },
+  { id: "tournament",  icon: "⛳", label: "EVENTS"  },
+  { id: "masters",     icon: "🟢", label: "MASTERS" },
+  { id: "sidebets",    icon: "🤝", label: "BETS"    },
+  { id: "login",       icon: "✏️", label: "MY GAME" },
 ];
 const NAV_MORE = [
   { id: "rules",    icon: "📋", label: "RULES"     },
@@ -132,6 +133,7 @@ function AppInner() {
   const NAV_PRIMARY = [
     ["leaderboard","🏆 LEADERBOARD"],
     ["tournament", "⛳ TOURNAMENTS"],
+    ["masters",    "🟢 MASTERS"    ],
     ["season",     "🌟 STANDINGS"  ],
     ["rules",      "📋 RULES"      ],
     ["course",     "🗺 COURSE"     ],
@@ -273,6 +275,7 @@ function AppInner() {
             />
           : <SidebetsLogin notify={notify} setScreen={setScreen} />
         )}
+        {screen==="masters"        && <MastersPool notify={notify} activePlayer={activePlayer} players={players} />}
         {screen==="season"        && <SeasonStandings players={players} adminUnlocked={adminUnlocked} />}
         {screen==="handicap"      && <HandicapTracker players={players} adminUnlocked={adminUnlocked} onHandicapUpdate={(pid,hcp)=>updateField(pid,"handicap",hcp)} />}
         {screen==="admin"         && <AdminViewScreen
