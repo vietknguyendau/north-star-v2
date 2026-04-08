@@ -9,7 +9,7 @@ import mastersData from "../data/mastersPicks.json";
 
 const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN;
 const MAX_ENTRIES = 40;
-const LOCK_TIME = new Date("2026-04-09T02:00:00").getTime();
+const LOCK_TIME = new Date("2026-04-09T06:00:00").getTime();
 
 const ALL_GOLFER_NAMES = mastersData.tiers.flatMap((t) => t.players.map((p) => p.name));
 
@@ -96,6 +96,43 @@ function LeaderboardTab({ entries, scores, loading, winningScore }) {
         <div className="text-4xl mb-3">⛳</div>
         <div className="font-display text-sm tracking-widest text-t3">NO ENTRIES YET</div>
         <div className="text-xs text-t3 mt-1">Switch to Enter Picks to be the first!</div>
+      </div>
+    );
+  }
+
+  if (!isLocked()) {
+    return (
+      <div>
+        <div className="card p-6 text-center mb-4">
+          <div className="text-3xl mb-3">🔒</div>
+          <div className="font-display text-[15px] tracking-wider mb-1">PICKS HIDDEN</div>
+          <div className="text-[12px] text-t2 mb-1">
+            {entries.length} {entries.length === 1 ? "entry" : "entries"} submitted
+          </div>
+          <div className="text-[11px] text-t3">
+            Picks are revealed when the pool locks — April 9 at 6:00 AM
+          </div>
+        </div>
+        <div className="card mt-4 p-5">
+          <div className="section-label mb-4">PAYOUT BREAKDOWN</div>
+          <div className="flex justify-around text-center">
+            <div>
+              <div className="text-[10px] text-t3 mb-1.5 font-display tracking-wider">1ST · 60%</div>
+              <div className="font-display text-3xl text-gold">${payouts[0]}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-t3 mb-1.5 font-display tracking-wider">2ND · 30%</div>
+              <div className="font-display text-2xl text-t2">${payouts[1]}</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-t3 mb-1.5 font-display tracking-wider">3RD · 10%</div>
+              <div className="font-display text-xl text-amber">${payouts[2]}</div>
+            </div>
+          </div>
+          <div className="text-center text-[11px] text-t3 mt-4 pt-3 border-t border-border">
+            {entries.length} / {MAX_ENTRIES} entries · ${pot} total pot
+          </div>
+        </div>
       </div>
     );
   }
